@@ -36,6 +36,6 @@ std::istream& operator >> (std::istream&, const Solver&);
 
 #include "solver.hpp"
 
-#endif 
+#endif
 
 /*  __SOLVER_H__  */
