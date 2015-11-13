@@ -62,7 +62,7 @@ int bin_or_txt (const char* filename) /* 0 - error, 1 - binary, 2 - text */
 {
 	int fd = open(filename, O_RDONLY, 0666);
 	char a[7];
-	read(fd, &a, 6*sizeof(char));
+	int smth = read(fd, &a, 6*sizeof(char));
 	close(fd);
 	a[6] = '\0';
 	if (!strcmp(a, "MATRIX"))
@@ -247,9 +247,9 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 			{
 				read_elems(file,buf,length);				
 				if (ofs % global_n_cols() == 0)
-					fscanf(file, "\n");
+					int smth = fscanf(file, "\n");
 				else
-					fscanf(file, " ");
+					int smth = fscanf(file, " ");
 			}
 			ofs += length;
 
@@ -469,4 +469,15 @@ complexd random_lower_triangle(int i, int j)
 	}
 	else
 		return 0;
+}
+
+complexd random_matrix(int i, int j)
+{
+		/*double re = normalized_rand();
+		double im = normalized_rand();
+		return complexd(re,im);*/
+	if (i==j)
+		return (i+j);
+	else
+		return i;
 }

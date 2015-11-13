@@ -346,108 +346,121 @@ complexd& Matrix::operator () (int row, int col)
 
 // Arithmetics----------------------------------------------------------------------------
 
-Matrix& Matrix::operator * (Matrix& b) const
+Matrix Matrix::operator * (Matrix& b) const
 {
-	/*Matrix c(global_A_rows, global_B_cols);
+	Matrix c_matr(global_n_rows(), b.global_n_cols());
 
-	Distribution distr = get_distribution();
-	Distribution distrB = b.get_distribution();
-	Distribution distrC = c.get_distribution();
 	int m = n_rows;
 	int n = b.n_cols;
 	int k = n_cols;
-	int global_A_rows = global_n_rows();
-	int global_A_cols = global_n_cols();
-	int global_B_rows = b.global_n_rows();
-	int global_B_cols = b.global_n_cols();
-	int global_C_rows = c.global_n_rows();
-	int global_C_cols = c.global_n_cols();
-	double* a = get_data();
+
+	Distribution distr = get_distribution();
+	Distribution distrB = b.get_distribution();
+	Distribution distrC = c_matr.get_distribution();
+
+	int row_offset = 1;
+	int col_offset = 1;
+
+	double* a_data = get_data();
 	double* b_data = b.get_data();
-	double* c_data = c.get_data();
-	double alpha = 1.0;
-	double beta = 0.0;
-	
-	pzgemm_('N', 'N', m, n, k, 
-		&alpha, 
-		&a, global_A_rows, global_A_cols, &distr.descriptor, 
-		&b_data, global_B_rows, global_B_cols, &distrB.descriptor, 
-		&beta, 
-		&c_data, global_C_rows, global_C_cols, &distrC.descriptor);
+	double* c_data = c_matr.get_data();
+	double* alpha = (double*)malloc(2*sizeof(double));
+	double* beta = (double*)malloc(2*sizeof(double));
+	alpha[0] = 1.0;
+	alpha[1] = 0.0;
+	beta[0] = 0.0; 
+	beta[1] = 0.0;
 
-	C.set_data(&c_data);
+	pzgemm_((char*) "N", (char*) "N", &m, &n, &k, 
+		alpha, a_data, &row_offset, &col_offset, distr.descriptor, 
+		b_data, &row_offset, &col_offset, distrB.descriptor, 
+		beta, c_data, &row_offset, &col_offset, distrC.descriptor);
 
-	return C;*/
+	c_matr.set_data(c_data);
+
+	return c_matr;
 }
 
-Matrix& Matrix::operator ~ () const
+Matrix Matrix::operator ~ () const
 {
-	/*Matrix C(global_A_rows, global_B_cols);
+	Matrix c_matr(global_n_cols(), global_n_rows());
 
 	Distribution distrA = get_distribution();
-	Distribution distrC = c.get_distribution();
+	Distribution distrC = c_matr.get_distribution();
+
+	int row_offset = 1;
+	int col_offset = 1;
 
 	int m = n_cols;
 	int n = n_rows;
-	double alpha = 1.0;
-	double beta = 0.0;
-	double* a = get_data();
-	double* c_data = c.get_data();
-	int global_A_rows = global_n_rows();
-	int global_A_cols = global_n_cols();
-	int global_C_rows = c.global_n_rows();
-	int global_C_cols = c.global_n_cols();
-	
-	pzgeadd ('C', m, n, 
-		&alpha, 
-		&a, global_A_rows, global_A_cols, distrA.descriptor, 
-		&beta, 
-		&c_data, global_C_rows, global_C_cols, distrC.descriptor);
-	
-	C.set_data(c_data);
 
-	return C;*/
+	double* alpha = (double*)malloc(2*sizeof(double));
+	double* beta = (double*)malloc(2*sizeof(double));
+	alpha[0] = 1.0;
+	alpha[1] = 0.0;
+	beta[0] = 1.0; 
+	beta[1] = 0.0;
+
+
+	int row_offset2 = distrA.row_offset()+1;
+	int col_offset2 = distrA.col_offset()+1;
+
+
+	double* a_data = get_data();
+	double* c_data = c_matr.get_data();
+	
+	pzgeadd_((char*) "N", &m, &n, 
+		alpha, a_data, &row_offset2, &col_offset2, distrA.descriptor, 
+		beta, c_data, &row_offset2, &col_offset2, distrC.descriptor);
+
+	c_matr.set_data(c_data);
+
+	return c_matr;
 }
 
-Matrix& Matrix::diagonalize (vector<complexd>& eigenvalues) const
+Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 {
-	/*double w[global_n_rows()];
+	double *w = (double*)malloc(global_n_rows()*sizeof(double));
+	Matrix Z(global_n_rows(), global_n_rows());
 
 	Distribution distrA = get_distribution();
 	Distribution distrZ = Z.get_distribution();
 
+	int n = n_rows;
+
 	double* a = get_data();
 	double* z = Z.get_data();
-	int global_A_rows = global_n_rows();
-	int global_A_cols = global_n_cols();
-	int global_Z_rows = Z.global_n_rows();
-	int global_Z_cols = Z.global_n_cols();
-
-	Matrix Z(global_A_rows, global_B_cols);
+	int row_offset = 1;
+	int col_offset = 1;
 
 	int lrwork = 2*n_rows + 2*n_rows-2;
 	int lwork = -1;
-	double work[1];
-	int rwork[lrwork];
+	double *work = (double*)malloc(1*sizeof(double));
+	double* rwork  = (double*)malloc(lwork*sizeof(double));
 	int ret_info;
 
-	pzheev ('V', 'L', n_rows, 
-		&a, global_A_rows, global_A_cols, distrA.descriptor, 
-		&w, 
-		&z, global_Z_rows, global_Z_cols, distrZ.descriptor, 
-		&work, &lwork, &rwork, &lrwork, &ret_info);
+	pzheev_((char*) "V", (char*) "L", &n, 
+		a, &row_offset, &col_offset, distrA.descriptor, 
+		w, 
+		z, &row_offset, &col_offset, distrZ.descriptor, 
+		work, &lwork, rwork, &lrwork, &ret_info);
 
 	for (int i=0; i<global_n_rows(); i++)
-		eigenvalues.push(w[i]);
+	{
+		eigenvalues.push_back(w[i]);
+		cout<<w[i]<<endl;
+	}
 
-	Z.set_data(&z);
+	Z.set_data(z);
+	
+	cout<<Z<<endl;
 
-	return Z;*/
+	return Z;
 }
 
-Matrix& exp (Matrix& A)
+Matrix exp (Matrix& A)
 {
-	/*vector<complexd> eigenvalues;
+	vector<complexd> eigenvalues;
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
 	Matrix U(A.global_n_rows(), A.global_n_cols());
 	Matrix U_c(A.global_n_cols(), A.global_n_rows());
@@ -464,7 +477,7 @@ Matrix& exp (Matrix& A)
 	Out = U_c * D;
 	Out = Out * U;
 	
-	return Out;*/
+	return Out;
 }
 
 
