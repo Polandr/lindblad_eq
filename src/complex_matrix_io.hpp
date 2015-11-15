@@ -13,10 +13,7 @@ void Matrix::operator >> (std::ostream& out)
 	for (int i = 0; i < global_n_rows(); i++)
 		for (int j = 0; j < global_n_cols(); j++)
 		{
-			if ((i >= info.row_offset()) &&
-				(i < info.row_offset() + n_rows) &&
-				(j >= info.col_offset()) &&
-				(j < info.col_offset() + n_cols))
+			if (in_block(i,j))
 			{
 				out << setprecision(2) << setw(6) << data[(i - info.row_offset()) + n_rows * (j - info.col_offset())];
 				if (j == (global_n_cols() - 1))
@@ -35,10 +32,7 @@ void Matrix::operator << (std::istream& in)
 	for (int i = 0; i < global_n_rows(); i++)
 		for (int j = 0; j < global_n_cols(); j++)
 		{
-			if ((i >= info.row_offset()) &&
-				(i < info.row_offset() + n_rows) &&
-				(j >= info.col_offset()) &&
-				(j < info.col_offset() + n_cols))
+			if (in_block(i,j))
 			{
 				in >> data[(i - info.row_offset()) + n_rows * (j - info.col_offset())];
 			}
@@ -140,7 +134,7 @@ void write_elems(FILE* file, double* buf, int count)
 {
 	for (int i = 0; i < count; i++)
 	{
-		fprintf(file, "(%.1f,%.1f)", buf[2*i], buf[2*i+1]);
+		fprintf(file, "(%.0f,%.0f)", buf[2*i], buf[2*i+1]);
 		if (i != count-1)
 			fprintf(file, " ");
 	}
@@ -254,7 +248,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 			ofs += length;
 
 
-			if (ProcessorGrid::my_proc == trg_proc)
+			if (trg_proc == ProcessorGrid::root)
 			{
 				set_row(buf,root_row);
 				root_row++;
@@ -285,7 +279,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 		free(buf);
 	}
 
-	local_data_transpose();
+	//local_data_transpose();
 
 	return mode;
 }
@@ -302,7 +296,7 @@ void Matrix::writef(int mode, const char* filename)
 	ofstream fd;
 	FILE* file;
 
-	local_data_transpose();
+	//local_data_transpose();
 
 	if (ProcessorGrid::is_root())
 	{
@@ -345,7 +339,7 @@ void Matrix::writef(int mode, const char* filename)
 			int length = local_proc_info[src_proc*4+3];
 			double* buf = (double*)malloc(length*2*sizeof(double));
 
-			if (ProcessorGrid::my_proc == src_proc)
+			if (src_proc == ProcessorGrid::root)
 			{
 				get_row(buf,root_row);
 				root_row++;
@@ -469,4 +463,9 @@ complexd random_lower_triangle(int i, int j)
 	}
 	else
 		return 0;
+}
+
+complexd index_indicator(int i, int j)
+{
+	return complexd(i,j);
 }

@@ -105,6 +105,8 @@ class Matrix
 	void create ();
 	void destroy ();
 
+	bool in_block (int, int);
+
 	int* gather_info ();
 
 public:
@@ -137,9 +139,9 @@ public:
 	void local_data_transpose();
 
 	Matrix& operator = (const Matrix&);
-	Matrix& operator * (Matrix&) const;
-	Matrix& operator ~ () const;
-	Matrix& diagonalize(std::vector<complexd>&) const;
+	Matrix operator * (Matrix&) const;
+	Matrix operator ~ () const;
+	Matrix diagonalize(std::vector<complexd>&) const;
 
 	int readf (const char*, int, int);
 	void writef (int, const char*);

@@ -6,18 +6,18 @@ int main(int argc, char** argv)
 	ProcessorGrid::default_init();
 
 	Matrix A(8,8);
-	A.generate(diagonal_natural_sequence);
-	A.writef(1,"Matrix_1");
+	A.generate(index_indicator);
+	A.writef(2,"matrices/Matrix_1");
 
 	Matrix B;
-	B.readf("Matrix_1");
-	B.writef(2,"Matrix_2");
+	B.readf("matrices/Matrix_1");
+	B.writef(2,"matrices/Matrix_2");
 
 	Matrix C = B;
-	C.writef(2,"Matrix_3");
+	C.writef(2,"matrices/Matrix_3");
 
 	Matrix D(C);
-	D.writef(2,"Matrix_4");
+	D.writef(2,"matrices/Matrix_4");
 
 	cout << D;
 
