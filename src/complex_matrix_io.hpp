@@ -393,11 +393,7 @@ void Matrix::print_on_condition(ofstream& out, bool (*condition)(int i, int j))
 	for (int i = 0; i < global_n_rows(); i++)
 		for (int j = 0; j < global_n_cols(); j++)
 		{
-			if ((i >= info.row_offset()) &&
-				(i < info.row_offset() + n_rows) &&
-				(j >= info.col_offset()) &&
-				(j < info.col_offset() + n_cols) &&
-				condition(i,j))
+			if (in_block(i,j) && condition(i,j))
 			{
 				out << data[(i - info.row_offset()) + n_rows * (j - info.col_offset())];
 				if (j == (global_n_cols() - 1))
@@ -426,10 +422,7 @@ void Matrix::generate (complexd (*func)(int i, int j))
 {
 	for (int i = 0; i < global_n_rows(); i++)
 		for (int j = 0; j < global_n_cols(); j++)
-			if ((i >= info.row_offset()) &&
-				(i < info.row_offset() + n_rows) &&
-				(j >= info.col_offset()) &&
-				(j < info.col_offset() + n_cols))
+			if (in_block(i,j))
 				data[(i - info.row_offset()) + n_rows * (j - info.col_offset())] = func(i,j);
 }
 
