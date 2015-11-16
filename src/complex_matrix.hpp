@@ -179,6 +179,14 @@ void Matrix::destroy()
 {
 	delete [] data;
 }
+
+bool Matrix::in_block(int i, int j)
+{
+	return ((i >= info.row_offset()) &&
+			(i < info.row_offset() + n_rows) &&
+			(j >= info.col_offset()) &&
+			(j < info.col_offset() + n_cols));
+}
 		
 void Matrix::set (int i, int j, complexd val)
 {
@@ -201,12 +209,14 @@ double* Matrix::get_data () const
 	return array;
 }
 
-void Matrix::get_row(double* array, int row) const
+void Matrix::get_row (double* array, int row) const
+// The row is got according to column-major order
+// so elements are taken fragmently
 {
 	for (int i = 0; i < n_cols; i++)
 	{
-		array[2*i] = data[row*n_cols+i].real();
-		array[2*i+1] = data[row*n_cols+i].imag();
+		array[2*i] = data[row+i*n_rows].real();
+		array[2*i+1] = data[row+i*n_rows].imag();
 	}
 }
 
@@ -220,11 +230,13 @@ void Matrix::set_data (double* array)
 }
 
 void Matrix::set_row (double* array, int row)
+// The row is set according to column-major order
+// so elements are set fragmently
 {
 	for (int i = 0; i < n_cols; i++)
 	{
-		data[row*n_cols+i].real() = array[2*i];
-		data[row*n_cols+i].imag() = array[2*i+1];
+		data[row+i*n_rows].real() = array[2*i];
+		data[row+i*n_rows].imag() = array[2*i+1];
 	}
 }
 
@@ -321,28 +333,24 @@ void Matrix::local_data_transpose ()
 	}
 }
 
-complexd& Matrix::operator () (int row, int col)
+/*complexd& Matrix::operator () (int row, int col)
 // Local indexing
 {
 	if (row >= n_rows || row < 0 || col >= n_cols || col < 0) 
 		throw My_exception("out of bounds");
 	else
 		return data[row*n_cols+col];
-}
+}*/
 
-// IT DOESN'T WORK :(
-/*complexd& Matrix::operator [] (int row, int col)
+complexd& Matrix::operator () (int row, int col)
 // Global indexing
 {
-	if (row >= info.global_n_rows() || row < 0 || col >= info.global_n_cols() || col < 0) 
+	if (row >= global_n_rows() || row < 0 || col >= global_n_cols() || col < 0) 
 		throw My_exception("out of bounds");
 	else
-		if ((row >= info.row_offset()) &&
-			(row < info.row_offset() + n_rows) &&
-			(col >= info.col_offset()) &&
-			(col < info.col_offset() + n_cols))
+		if (in_block(row,col))
 			return data[(row - info.row_offset()) + n_rows * (col - info.col_offset())];
-}*/
+}
 
 // Arithmetics----------------------------------------------------------------------------
 
@@ -350,9 +358,9 @@ Matrix Matrix::operator * (Matrix& b) const
 {
 	Matrix c_matr(global_n_rows(), b.global_n_cols());
 
-	int m = n_rows;
-	int n = b.n_cols;
-	int k = n_cols;
+	int m = global_n_rows();
+	int n = b.global_n_cols();
+	int k = global_n_cols();
 
 	Distribution distr = get_distribution();
 	Distribution distrB = b.get_distribution();
@@ -391,8 +399,8 @@ Matrix Matrix::operator ~ () const
 	int row_offset = 1;
 	int col_offset = 1;
 
-	int m = n_cols;
-	int n = n_rows;
+	int m = global_n_rows();
+	int n = global_n_cols();
 
 	double* alpha = (double*)malloc(2*sizeof(double));
 	double* beta = (double*)malloc(2*sizeof(double));
@@ -401,17 +409,12 @@ Matrix Matrix::operator ~ () const
 	beta[0] = 1.0; 
 	beta[1] = 0.0;
 
-
-	int row_offset2 = distrA.row_offset()+1;
-	int col_offset2 = distrA.col_offset()+1;
-
-
 	double* a_data = get_data();
 	double* c_data = c_matr.get_data();
 	
-	pzgeadd_((char*) "N", &m, &n, 
-		alpha, a_data, &row_offset2, &col_offset2, distrA.descriptor, 
-		beta, c_data, &row_offset2, &col_offset2, distrC.descriptor);
+	pzgeadd_((char*) "T", &m, &n, 
+		alpha, a_data, &row_offset, &col_offset, distrA.descriptor, 
+		beta, c_data, &row_offset, &col_offset, distrC.descriptor);
 
 	c_matr.set_data(c_data);
 
@@ -426,17 +429,17 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	Distribution distrA = get_distribution();
 	Distribution distrZ = Z.get_distribution();
 
-	int n = n_rows;
+	int n = global_n_rows();
 
 	double* a = get_data();
 	double* z = Z.get_data();
 	int row_offset = 1;
 	int col_offset = 1;
 
-	int lrwork = 2*n_rows + 2*n_rows-2;
-	int lwork = -1;
-	double *work = (double*)malloc(1*sizeof(double));
-	double* rwork  = (double*)malloc(lwork*sizeof(double));
+	int lrwork = 2*n + 2*n-2;
+	int lwork = 5000;
+	double *work = (double*)malloc(lwork*sizeof(double));
+	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
 
 	pzheev_((char*) "V", (char*) "L", &n, 
@@ -448,12 +451,9 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	for (int i=0; i<global_n_rows(); i++)
 	{
 		eigenvalues.push_back(w[i]);
-		cout<<w[i]<<endl;
 	}
 
 	Z.set_data(z);
-	
-	cout<<Z<<endl;
 
 	return Z;
 }
@@ -468,16 +468,17 @@ Matrix exp (Matrix& A)
 
 	U = A.diagonalize(eigenvalues);
 	U_c = ~U;
-	
-	for (int i=0; i<D.n_rows; i++)
-		for (int j=0; j<D.n_cols; j++)
+	Distribution distr = D.get_distribution();
+
+	for (int i=distr.row_offset(); i<distr.row_offset()+D.n_rows; i++)
+		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
 			if (i==j)
 				D(i,j) = exp(eigenvalues[i]);
 
-	Out = U_c * D;
-	Out = Out * U;
+	Out = U * D;
+	Out = Out * U_c;
 	
-	return Out;
+	return D;
 }
 
 

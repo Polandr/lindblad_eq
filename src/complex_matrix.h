@@ -105,6 +105,8 @@ class Matrix
 	void create ();
 	void destroy ();
 
+	bool in_block (int, int);
+
 	int* gather_info ();
 
 public:
