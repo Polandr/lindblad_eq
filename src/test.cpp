@@ -15,13 +15,13 @@ int main(int argc, char** argv)
 	Solver solver;
 	solver.init_H(H);
 	solver.init_R0(R0);
-	solver.init_dT();
-	solver.init_step_num();
-	cout << solver << endl << flush;
+	solver.init_dT(0.2);
+	solver.init_step_num(4);
 
-	//A.writef(2,"matrices/eigenvectors");
+	solver.get_H().writef(2,"matrices/hamiltonian");
+	solver.get_R0().writef(2,"matrices/init_density");
 
-	//cout << A;
+	solver.solve(NULL);
 
 	ProcessorGrid::exit();
 }

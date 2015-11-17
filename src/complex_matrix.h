@@ -71,7 +71,8 @@ public:
 
 	int readf (const char*, int, int);
 	void writef (int, const char*);
-	void print_on_condition (std::ofstream&, bool (*cond)(int, int));
+	void print_on_condition (std::ostream&, bool (*cond)(int, int));
+	void print_diagonal_abs(FILE*);
 	void generate (complexd (*func)(int, int));
 
 	void operator >> (std::ostream&);

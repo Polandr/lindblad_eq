@@ -385,7 +385,7 @@ void Matrix::writef(int mode, const char* filename)
 
 // Stream conditional print
 
-void Matrix::print_on_condition(ofstream& out, bool (*condition)(int i, int j))
+void Matrix::print_on_condition(ostream& out, bool (*condition)(int i, int j))
 {
 	int min_dim = (global_n_rows() < global_n_cols())? global_n_rows() : global_n_cols();
 	out << flush;
@@ -414,6 +414,42 @@ bool daigonal_elements(int i, int j)
 bool all_elements(int i, int j)
 {
 	return true;
+}
+
+void Matrix::print_diagonal_abs(FILE* file)
+// Need serialization here
+{
+	int min_dim = (global_n_rows() < global_n_cols())? global_n_rows() : global_n_cols();
+	int* local_proc_info = gather_info();
+	//cout << "I'm here <" << ProcessorGrid::my_proc << ">\n";
+	for (int i = 0; i < min_dim; i++)
+		if (ProcessorGrid::is_root())
+		{
+			int src_proc = get_target(local_proc_info,i,i);
+			double magnitude;
+			if (src_proc != ProcessorGrid::root)
+			{
+				MPI_Status status;
+				MPI_Recv(&magnitude,1,MPI_DOUBLE,src_proc,0,MPI_COMM_WORLD,&status);
+			}
+			else
+			{
+				magnitude = abs(data[(i - info.row_offset()) + n_rows * (i - info.col_offset())]);
+			}
+
+			fprintf(file, "%lf", magnitude);
+			if (i != min_dim-1)
+				fprintf(file, " ");
+			else
+				fprintf(file, "\n");
+		}
+		else
+			if (in_block(i,i))
+			{
+				double magnitude = abs(data[(i - info.row_offset()) + n_rows * (i - info.col_offset())]);
+				MPI_Request request;
+				MPI_Isend(&magnitude,1,MPI_DOUBLE,ProcessorGrid::root,0,MPI_COMM_WORLD,&request);
+			}
 }
 
 // Matrix generator

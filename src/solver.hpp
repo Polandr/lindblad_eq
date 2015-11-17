@@ -90,13 +90,24 @@ void Solver::init_system()
 	init_step_num(DEFAULT_STEP_NUM);
 }
 
+void print_header(FILE* file)
+{
+	if (ProcessorGrid::is_root())
+		fprintf(file, "Magnitudes of diagonal elements are:\n");
+}
+
 void Solver::solve(const char* filename)
 {
-	ofstream file;
+	FILE* file;
 	if (filename != NULL)
-		file.open(filename, ios::out);
+	{
+		file = fopen(filename,"w");
+		print_header(file);
+	}
+	else
+		print_header(stdout);
 
-	complexd imag_unit = sqrt(-1);
+	complexd imag_unit(0,1);
 	Matrix U = exp(H*((-imag_unit)*dT/Plank_const));
 	Matrix conj_U = ~U;
 	Matrix Rt = R0;
@@ -106,10 +117,12 @@ void Solver::solve(const char* filename)
 		Rt = U*Rt;
 		Rt = Rt*conj_U;
 		if (filename != NULL)
-			Rt.print_on_condition(file,diagonal_elements);
+			Rt.print_diagonal_abs(file);
 		else
-			Rt.print_on_condition(cout,diagonal_elements);
+			Rt.print_diagonal_abs(stdout);
 	}
+	if (filename != NULL)
+		fclose(file);
 }
 
 ostream& operator << (ostream& out, Solver& src)
