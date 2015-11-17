@@ -1,18 +1,18 @@
+// Matrix class realization
+
 using namespace std;
 
-//typedef complex<double> complexd;
-
-class My_exception: public std::exception
+class Matrix_exception: public std::exception
 {
 	mutable char* errstr; 
 
 	public:
 
-	My_exception(const char* str = "")
+	Matrix_exception(const char* str = "")
 	{
 		errstr = const_cast <char*> (str);
 	}
-	~My_exception() throw()
+	~Matrix_exception() throw()
 	{
 		delete [] errstr;
 	}
@@ -33,118 +33,7 @@ class My_exception: public std::exception
 	}	
 };
 
-// Parallel distribution-------------------------------------------------------------
-
-// Distribution struct:
-
-void Distribution::set_matrix_dims (int rows = 0, int cols = 0)
-{
-	matrix_global_rows = rows;
-	matrix_global_cols = cols;
-}
-
-void Distribution::set_block_sizes (int row_size = R_BLOCK_SIZE, int col_size = C_BLOCK_SIZE)
-{
-	row_block_size = row_size;
-	col_block_size = col_size;		
-}
-
-// Size and offset of local matrix:
-
-int Distribution::local_row_num ()
-{
-	return numroc_(&matrix_global_rows,&row_block_size,
-		&(ProcessorGrid::my_proc_row),&(ProcessorGrid::start_proc_row),&(ProcessorGrid::proc_row_num));
-}
-
-int Distribution::local_col_num ()
-{
-	return numroc_(&matrix_global_cols,&col_block_size,
-		&(ProcessorGrid::my_proc_col),&(ProcessorGrid::start_proc_col),&(ProcessorGrid::proc_col_num));
-}
-
-int Distribution::row_offset ()
-{
-	return npreroc_(&matrix_global_rows,&row_block_size,
-		&(ProcessorGrid::my_proc_row),&(ProcessorGrid::start_proc_row),&(ProcessorGrid::proc_row_num));
-}
-
-int Distribution::col_offset ()
-{
-	return npreroc_(&matrix_global_cols,&col_block_size,
-		&(ProcessorGrid::my_proc_col),&(ProcessorGrid::start_proc_col),&(ProcessorGrid::proc_col_num));
-}
-
-void Distribution::operator = (const Distribution& other)
-{
-	row_block_size = other.row_block_size;
-	col_block_size = other.col_block_size;
-	matrix_global_rows = other.matrix_global_rows;
-	matrix_global_cols = other.matrix_global_cols;
-	for (int i = 0; i < DESC_LEN; i++)
-		descriptor[i] = other.descriptor[i];
-}
-
-
-// ProcessorGrid struct:
-
-void ProcessorGrid::init (int proc_rows = PRC_R, int proc_cols = PRC_C,
-	int start_row = STRT_R, int start_col = STRT_C, int rt = ROOT)
-{
-	int grid_size;
-	Cblacs_pinfo(&my_proc,&grid_size);
-	if (proc_rows*proc_cols > grid_size ||
-		my_proc < 0 || my_proc >= grid_size)
-		throw My_exception("incorrect grid initialization");
-
-	root = rt;
-	start_proc_row = start_row;
-	start_proc_col = start_col;
-
-	Cblacs_get(0,0,&context);
-	Cblacs_gridinit(&context, (char *)"Column", proc_rows, proc_cols);
-	Cblacs_gridinfo(context,&proc_row_num,&proc_col_num,&my_proc_row,&my_proc_col);
-
-	if (my_proc == rt)
-		printf("Grid initialized!\n");
-
-	initialized = true;
-}
-
-void ProcessorGrid::default_init ()
-{
-	int proc_num, grid_size;
-	Cblacs_pinfo(&proc_num,&grid_size);
-	int proc_dim = (int)sqrt(grid_size);
-	if (proc_num == ROOT)
-	{
-		cout << flush;
-		cout << "WARNING" << endl;
-		cout << "Using default process grid initialization:" << endl;
-		cout << "Root process has number: " << ROOT << endl;
-		cout << "Process grid is " << proc_dim << "x" << proc_dim << 
-		" starting from (" << STRT_R << "," << STRT_C << ") process." << endl;
-		cout << flush;
-	}
-	ProcessorGrid::init(proc_dim, proc_dim, STRT_R, STRT_C, ROOT);
-}
-
-void ProcessorGrid::square_init (int start_row = STRT_R, int start_col = STRT_C, int rt = ROOT)
-{
-	int proc_num, grid_size;
-	Cblacs_pinfo(&proc_num,&grid_size);
-	int proc_dim = (int)sqrt(grid_size);
-	ProcessorGrid::init(proc_dim, proc_dim, start_row, start_col, rt);
-}
-
-void ProcessorGrid::exit()
-{
-	Cblacs_gridexit(context);
-	Cblacs_exit(0);
-}
-
-
-// Matrix class:
+// Matrix grid initialization
 
 void Matrix::init_distribution (int rows = 0, int cols = 0,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
@@ -164,7 +53,7 @@ void Matrix::init_distribution (int rows = 0, int cols = 0,
 			  &(ProcessorGrid::start_proc_row), &(ProcessorGrid::start_proc_col),
 			  &(ProcessorGrid::context), &lld, &out);
 	if (out != 0)
-		throw My_exception("incorrect descriptor initialization");
+		throw Matrix_exception("incorrect descriptor initialization");
 
 }
 
@@ -253,7 +142,7 @@ Matrix::Matrix (int rows, int cols,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
 	if (rows <= 0 || cols <= 0)
-		throw My_exception("invalid matrix size");
+		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
 	n_cols = info.local_col_num();
@@ -267,7 +156,7 @@ void Matrix::init (int rows, int cols,
 {
 	this->~Matrix();
 	if (rows <= 0 || cols <= 0)
-		throw My_exception("invalid matrix size");
+		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
 	n_cols = info.local_col_num();
@@ -307,7 +196,7 @@ Matrix& Matrix::operator = (const Matrix& other)
 	return *this;
 }
 
-void Matrix::local_data_transpose ()
+void Matrix::in_place_transposition ()
 {
 	for (int i = 1; i < (n_rows*n_cols-1); i++)
 	{
@@ -337,16 +226,16 @@ void Matrix::local_data_transpose ()
 // Local indexing
 {
 	if (row >= n_rows || row < 0 || col >= n_cols || col < 0) 
-		throw My_exception("out of bounds");
+		throw Matrix_exception("out of bounds");
 	else
 		return data[row*n_cols+col];
 }*/
 
 complexd& Matrix::operator () (int row, int col)
-// Global indexing
+// Indexing on local submatrix using global indices
 {
 	if (row >= global_n_rows() || row < 0 || col >= global_n_cols() || col < 0) 
-		throw My_exception("out of bounds");
+		throw Matrix_exception("out of bounds");
 	else
 		if (in_block(row,col))
 			return data[(row - info.row_offset()) + n_rows * (col - info.col_offset())];
@@ -354,13 +243,27 @@ complexd& Matrix::operator () (int row, int col)
 
 // Arithmetics----------------------------------------------------------------------------
 
+Matrix& Matrix::operator *= (complexd val)
+{
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] *= val;
+	return *this;
+}
+
+Matrix Matrix::operator * (complexd val) const
+{
+	Matrix out(*this);
+	out *= val;
+	return out;
+}
+
 Matrix Matrix::operator * (Matrix& b) const
 {
 	Matrix c_matr(global_n_rows(), b.global_n_cols());
 
-	int m = n_rows;
-	int n = b.n_cols;
-	int k = n_cols;
+	int m = global_n_rows();
+	int n = b.global_n_cols();
+	int k = global_n_cols();
 
 	Distribution distr = get_distribution();
 	Distribution distrB = b.get_distribution();
@@ -399,8 +302,8 @@ Matrix Matrix::operator ~ () const
 	int row_offset = 1;
 	int col_offset = 1;
 
-	int m = n_cols;
-	int n = n_rows;
+	int m = global_n_rows();
+	int n = global_n_cols();
 
 	double* alpha = (double*)malloc(2*sizeof(double));
 	double* beta = (double*)malloc(2*sizeof(double));
@@ -409,17 +312,12 @@ Matrix Matrix::operator ~ () const
 	beta[0] = 1.0; 
 	beta[1] = 0.0;
 
-
-	int row_offset2 = distrA.row_offset()+1;
-	int col_offset2 = distrA.col_offset()+1;
-
-
 	double* a_data = get_data();
 	double* c_data = c_matr.get_data();
 	
-	pzgeadd_((char*) "N", &m, &n, 
-		alpha, a_data, &row_offset2, &col_offset2, distrA.descriptor, 
-		beta, c_data, &row_offset2, &col_offset2, distrC.descriptor);
+	pzgeadd_((char*) "T", &m, &n, 
+		alpha, a_data, &row_offset, &col_offset, distrA.descriptor, 
+		beta, c_data, &row_offset, &col_offset, distrC.descriptor);
 
 	c_matr.set_data(c_data);
 
@@ -434,17 +332,17 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	Distribution distrA = get_distribution();
 	Distribution distrZ = Z.get_distribution();
 
-	int n = n_rows;
+	int n = global_n_rows();
 
 	double* a = get_data();
 	double* z = Z.get_data();
 	int row_offset = 1;
 	int col_offset = 1;
 
-	int lrwork = 2*n_rows + 2*n_rows-2;
-	int lwork = -1;
-	double *work = (double*)malloc(1*sizeof(double));
-	double* rwork  = (double*)malloc(lwork*sizeof(double));
+	int lrwork = 2*n + 2*n-2;
+	int lwork = 5000;
+	double *work = (double*)malloc(lwork*sizeof(double));
+	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
 
 	pzheev_((char*) "V", (char*) "L", &n, 
@@ -456,17 +354,14 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	for (int i=0; i<global_n_rows(); i++)
 	{
 		eigenvalues.push_back(w[i]);
-		cout<<w[i]<<endl;
 	}
 
 	Z.set_data(z);
-	
-	cout<<Z<<endl;
 
 	return Z;
 }
 
-Matrix exp (Matrix& A)
+Matrix exp (Matrix A)
 {
 	vector<complexd> eigenvalues;
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
@@ -476,16 +371,17 @@ Matrix exp (Matrix& A)
 
 	U = A.diagonalize(eigenvalues);
 	U_c = ~U;
-	
-	for (int i=0; i<D.n_rows; i++)
-		for (int j=0; j<D.n_cols; j++)
+	Distribution distr = D.get_distribution();
+
+	for (int i=distr.row_offset(); i<distr.row_offset()+D.n_rows; i++)
+		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
 			if (i==j)
 				D(i,j) = exp(eigenvalues[i]);
 
-	Out = U_c * D;
-	Out = Out * U;
+	Out = U * D;
+	Out = Out * U_c;
 	
-	return Out;
+	return D;
 }
 
 

@@ -1,25 +1,27 @@
 #include "complex_matrix.h"
+#include "solver.h"
+
+using namespace std;
 
 int main(int argc, char** argv)
 {
 	//ProcessorGrid::square_init();
 	ProcessorGrid::default_init();
 
-	Matrix A(8,8);
-	A.generate(index_indicator);
-	A.writef(2,"matrices/Matrix_1");
+	Matrix H(8,8), R0(8,8);
+	H.generate(identity_matrix);
+	R0.generate(identity_matrix);
 
-	Matrix B;
-	B.readf("matrices/Matrix_1");
-	B.writef(2,"matrices/Matrix_2");
+	Solver solver;
+	solver.init_H(H);
+	solver.init_R0(R0);
+	solver.init_dT();
+	solver.init_step_num();
+	cout << solver << endl << flush;
 
-	Matrix C = B;
-	C.writef(2,"matrices/Matrix_3");
+	//A.writef(2,"matrices/eigenvectors");
 
-	Matrix D(C);
-	D.writef(2,"matrices/Matrix_4");
-
-	cout << D;
+	//cout << A;
 
 	ProcessorGrid::exit();
 }

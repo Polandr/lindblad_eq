@@ -1,4 +1,4 @@
-// Matrix input and output
+// Matrix input and output operations realization
 
 #include <iomanip>
 #include <fcntl.h>
@@ -81,19 +81,19 @@ void read_header(int fd, int* dims)
 {
 	lseek(fd,6*sizeof(char),SEEK_CUR);
 	if (read(fd, dims, 2*sizeof(int)) < 2*sizeof(int))
-		throw My_exception("wrong file format (couldn't read header)");
+		throw Matrix_exception("wrong file format (couldn't read header)");
 }
 
 void read_header(FILE* file, int* dims)
 {
 	if (fscanf(file, "Matrix %d x %d\n",  &dims[0], &dims[1]) < 2)
-		throw My_exception("wrong file format (couldn't read header)");
+		throw Matrix_exception("wrong file format (couldn't read header)");
 }
 
 void read_elems(int file, double* buf, int count)
 {
 	if (read(file, buf, count*2*sizeof(double)) < count*2*sizeof(double))
-		throw My_exception("wrong file format (couldn't read elements)");
+		throw Matrix_exception("wrong file format (couldn't read elements)");
 }
 
 void read_elems(FILE* file, double* buf, int count)
@@ -102,12 +102,12 @@ void read_elems(FILE* file, double* buf, int count)
 		if (i != count-1)
 		{
 			if (fscanf(file, "(%lf,%lf) ", &buf[2*i], &buf[2*i+1]) < 2)
-				throw My_exception("wrong file format (couldn't read elements)");
+				throw Matrix_exception("wrong file format (couldn't read elements)");
 		}
 		else
 		{
 			if (fscanf(file, "(%lf,%lf)", &buf[2*i], &buf[2*i+1]) < 2)
-				throw My_exception("wrong file format (couldn't read elements)");
+				throw Matrix_exception("wrong file format (couldn't read elements)");
 		}
 }
 
@@ -194,7 +194,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 			fd = open(filename, O_RDONLY);
 			if (fd < 0)
 			{
-				throw My_exception("failed to open file to import");
+				throw Matrix_exception("failed to open file to import");
 				MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			read_header(fd,dims);
@@ -206,7 +206,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 			file = fopen(filename ,"r");
 			if (file == NULL)
 			{
-				throw My_exception("failed to open file to import");
+				throw Matrix_exception("failed to open file to import");
 				MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			read_header(file,dims);
@@ -216,7 +216,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 	MPI_Bcast(dims,2,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
 	MPI_Bcast(&mode,1,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
 	if (mode == 0)
-		throw My_exception("wrong file format (undefined header)");
+		throw Matrix_exception("wrong file format (undefined header)");
 
 	init(dims[0],dims[1],row_block,col_block);
 	int* local_proc_info = gather_info();
@@ -291,7 +291,7 @@ void Matrix::writef(int mode, const char* filename)
 // 2 in case of text file write
 {
 	if (mode != 1 && mode != 2)
-		throw My_exception("undefined export mode");
+		throw Matrix_exception("undefined export mode");
 
 	ofstream fd;
 	FILE* file;
@@ -305,7 +305,7 @@ void Matrix::writef(int mode, const char* filename)
 			fd.open(filename, ios::out | ios::binary | ios::trunc);
 			if (!fd.is_open())
 			{
-				throw My_exception("failed to open file to export");
+				throw Matrix_exception("failed to open file to export");
 				MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			write_header(fd,global_n_rows(),global_n_cols());
@@ -317,7 +317,7 @@ void Matrix::writef(int mode, const char* filename)
 			file = fopen(filename ,"w");
 			if (file == NULL)
 			{
-				throw My_exception("failed to open file to export");
+				throw Matrix_exception("failed to open file to export");
 				MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			write_header(file,global_n_rows(),global_n_cols());
@@ -406,7 +406,7 @@ void Matrix::print_on_condition(ofstream& out, bool (*condition)(int i, int j))
 		}
 }
 
-bool daigonal(int i, int j)
+bool daigonal_elements(int i, int j)
 {
 	return (i == j);
 }

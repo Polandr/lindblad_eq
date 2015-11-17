@@ -1,4 +1,4 @@
-#include "utility.hpp"
+#include <complex>
 
 #define DEFAULT_H_FILE "Matrix_H"
 #define DEFAULT_R0_FILE "Matrix_R0"
@@ -17,11 +17,11 @@ class Solver_exception: public std::exception
 
 	public:
 
-	Mat_ex(const char* str = "")
+	Solver_exception(const char* str = "")
 	{
 		errstr = const_cast <char*> (str);
 	}
-	~Mat_ex() throw()
+	~Solver_exception() throw()
 	{
 		delete [] errstr;
 	}
@@ -44,38 +44,50 @@ class Solver_exception: public std::exception
 
 // Solver functions realization------------------------------------------------------------
 
-void Solver::init_H(const char* filename)
+void Solver::init_H(const char* filename = DEFAULT_H_FILE)
 {
 	H.readf(filename);
 	if (!(H.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
 }
 
-void Solver::init_R0(const char* filename)
+void Solver::init_R0(const char* filename = DEFAULT_R0_FILE)
 {
 	R0.readf(filename);
 	if (!(R0.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
 }
 
-void Solver::init_dT(double dt):
-dT(dt)
-{}
-
-void Solver::init_step_num(double steps):
-step_num(steps)
-{}
-
-void Solver::init_system():
-dT(DEFAULT_DT), step_num(DEFAULT_STEP_NUM)
+void Solver::init_H(const Matrix& matrix_H)
 {
-	H.readf(DEFAULT_H_FILE);
+	H = matrix_H;
 	if (!(H.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
+}
 
-	R0.readf(DEFAULT_R0_FILE);
+void Solver::init_R0(const Matrix& matrix_R0)
+{
+	R0 = matrix_R0;
 	if (!(R0.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
+}
+
+void Solver::init_dT(double dt = DEFAULT_DT)
+{
+	dT = dt;
+}
+
+void Solver::init_step_num(int steps = DEFAULT_STEP_NUM)
+{
+	step_num = steps;
+}
+
+void Solver::init_system()
+{
+	init_H(DEFAULT_H_FILE);
+	init_R0(DEFAULT_R0_FILE);
+	init_dT(DEFAULT_DT);
+	init_step_num(DEFAULT_STEP_NUM);
 }
 
 void Solver::solve(const char* filename)
@@ -83,24 +95,26 @@ void Solver::solve(const char* filename)
 	ofstream file;
 	if (filename != NULL)
 		file.open(filename, ios::out);
-	else
-		file = cout;
 
-	using namespace std::literals;
-	Matrix U = exp(-1i*dT/Plank_const*H); // This function need to be overloaded
-	Matrix conj_U = ~U; // This function need to be realized
+	complexd imag_unit = sqrt(-1);
+	Matrix U = exp(H*((-imag_unit)*dT/Plank_const));
+	Matrix conj_U = ~U;
 	Matrix Rt = R0;
 
 	for (int i = 0; i < step_num; i++)
 	{
-		Rt = /* ScaLapack multiplication U*Rt*conj_U */
-		Rt.print_on_condition(file,diagonal);
+		Rt = U*Rt;
+		Rt = Rt*conj_U;
+		if (filename != NULL)
+			Rt.print_on_condition(file,diagonal_elements);
+		else
+			Rt.print_on_condition(cout,diagonal_elements);
 	}
 }
 
-ostream& operator << (ostream& out, const Solver& src)
+ostream& operator << (ostream& out, Solver& src)
 {
-	out << "System configuration is:\n"
+	out << "System configuration is:\n";
 	out << "Matrix H:\n" << src.get_H() << endl;
 	out << "Matrix R0:\n" << src.get_R0() << endl;
 	out << "dT: " << src.get_dT() << endl;
@@ -109,7 +123,7 @@ ostream& operator << (ostream& out, const Solver& src)
 	return out;
 }
 
-istream& operator >> (istream& in, const Solver& trg)
+istream& operator >> (istream& in, Solver& trg)
 {
 	in >> trg.get_H();
 	in >> trg.get_R0();
@@ -118,9 +132,3 @@ istream& operator >> (istream& in, const Solver& trg)
 
 	return in;
 }
-
-
-
-// Need:
-//
-// Matrix& exp(Matrix&)
