@@ -354,6 +354,18 @@ complexd& Matrix::operator () (int row, int col)
 
 // Arithmetics----------------------------------------------------------------------------
 
+Matrix Matrix::operator * (double b) const
+{
+	Matrix A(*this);
+	Distribution distr = get_distribution();
+	for (int i=distr.row_offset(); i<distr.row_offset()+n_rows; i++)
+		for (int j=distr.col_offset(); j<distr.col_offset()+n_cols; j++)
+		{
+			A(i,j) = A(i,j) * b;
+		}
+	return A;
+}
+
 Matrix Matrix::operator * (Matrix& b) const
 {
 	Matrix c_matr(global_n_rows(), b.global_n_cols());

@@ -3,7 +3,6 @@
 #include <utility>
 #include <fstream>
 
-
 #ifndef __SOLVER_H__
 #define __SOLVER_H__
 

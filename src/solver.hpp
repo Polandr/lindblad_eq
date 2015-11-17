@@ -1,4 +1,4 @@
-#include "utility.hpp"
+
 
 #define DEFAULT_H_FILE "Matrix_H"
 #define DEFAULT_R0_FILE "Matrix_R0"
@@ -17,11 +17,11 @@ class Solver_exception: public std::exception
 
 	public:
 
-	Mat_ex(const char* str = "")
+	Solver_exception(const char* str = "")
 	{
 		errstr = const_cast <char*> (str);
 	}
-	~Mat_ex() throw()
+	~Solver_exception() throw()
 	{
 		delete [] errstr;
 	}
@@ -58,17 +58,20 @@ void Solver::init_R0(const char* filename)
 		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
 }
 
-void Solver::init_dT(double dt):
-dT(dt)
-{}
-
-void Solver::init_step_num(double steps):
-step_num(steps)
-{}
-
-void Solver::init_system():
-dT(DEFAULT_DT), step_num(DEFAULT_STEP_NUM)
+void Solver::init_dT(double dt)
 {
+	dT=dt;
+}
+
+void Solver::init_step_num(int steps)
+{
+	step_num=steps;
+}
+
+void Solver::init_system()
+{
+	dT = DEFAULT_DT;
+	step_num = DEFAULT_STEP_NUM;
 	H.readf(DEFAULT_H_FILE);
 	if (!(H.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
@@ -81,24 +84,32 @@ dT(DEFAULT_DT), step_num(DEFAULT_STEP_NUM)
 void Solver::solve(const char* filename)
 {
 	ofstream file;
+	double i = sqrt(-1);
 	if (filename != NULL)
 		file.open(filename, ios::out);
-	else
-		file = cout;
+	/*else
+		file = cout;*/
 
-	using namespace std::literals;
-	Matrix U = exp(-1i*dT/Plank_const*H); // This function need to be overloaded
+	//using namespace std::literals;
+	Matrix H0 = H*(-i*dT/Plank_const);
+	Matrix U = exp(H0); // This function need to be overloaded
 	Matrix conj_U = ~U; // This function need to be realized
 	Matrix Rt = R0;
 
 	for (int i = 0; i < step_num; i++)
 	{
-		Rt = /* ScaLapack multiplication U*Rt*conj_U */
-		Rt.print_on_condition(file,diagonal);
+		Rt = U*Rt;
+		Rt = Rt*conj_U; /* ScaLapack multiplication U*Rt*conj_U */
+
+
+		//TODO: Fix printing abs in file
+
+
+		//Rt.print_on_condition(file,diagonal);
 	}
 }
 
-ostream& operator << (ostream& out, const Solver& src)
+/*ostream& operator << (ostream& out, const Solver& src)
 {
 	out << "System configuration is:\n"
 	out << "Matrix H:\n" << src.get_H() << endl;
@@ -117,7 +128,7 @@ istream& operator >> (istream& in, const Solver& trg)
 	in >> trg.get_step_num();
 
 	return in;
-}
+}*/
 
 
 

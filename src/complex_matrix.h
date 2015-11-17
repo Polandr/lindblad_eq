@@ -140,6 +140,7 @@ public:
 
 	Matrix& operator = (const Matrix&);
 	Matrix operator * (Matrix&) const;
+	Matrix operator * (double) const;
 	Matrix operator ~ () const;
 	Matrix diagonalize(std::vector<complexd>&) const;
 
