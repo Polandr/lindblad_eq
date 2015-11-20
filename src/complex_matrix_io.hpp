@@ -625,3 +625,23 @@ complexd index_indicator(int i, int j)
 {
 	return complexd(i,j);
 }
+
+// Special initializers
+
+void Matrix::init_density_matrix(vector<complexd> state)
+{
+	init(state.size(),state.size());
+	for (int i = 0; i < global_n_rows(); i++)
+		for (int j = 0; j < global_n_cols(); j++)
+			if (in_block(i,j))
+				data[(i - info.row_offset()) + n_rows * (j - info.col_offset())] = state[i]*conj(state[j]);
+}
+
+void Matrix::init_density_matrix(int N, int i)
+{
+	if (i >= N)
+		throw  Matrix_exception("invalid density matrix initialization");
+	vector<complexd> state(N,0);
+	state[i] = 1;
+	init_density_matrix(state);
+}
