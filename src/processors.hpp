@@ -108,25 +108,25 @@ void Distribution::set_block_sizes (int row_size = R_BLOCK_SIZE, int col_size = 
 
 // Size and offset of local matrix:
 
-int Distribution::local_row_num ()
+int Distribution::local_row_num () const
 {
 	return numroc_(&matrix_global_rows,&row_block_size,
 		&(ProcessorGrid::my_proc_row),&(ProcessorGrid::start_proc_row),&(ProcessorGrid::proc_row_num));
 }
 
-int Distribution::local_col_num ()
+int Distribution::local_col_num () const
 {
 	return numroc_(&matrix_global_cols,&col_block_size,
 		&(ProcessorGrid::my_proc_col),&(ProcessorGrid::start_proc_col),&(ProcessorGrid::proc_col_num));
 }
 
-int Distribution::row_offset ()
+int Distribution::row_offset () const
 {
 	return npreroc_(&matrix_global_rows,&row_block_size,
 		&(ProcessorGrid::my_proc_row),&(ProcessorGrid::start_proc_row),&(ProcessorGrid::proc_row_num));
 }
 
-int Distribution::col_offset ()
+int Distribution::col_offset () const
 {
 	return npreroc_(&matrix_global_cols,&col_block_size,
 		&(ProcessorGrid::my_proc_col),&(ProcessorGrid::start_proc_col),&(ProcessorGrid::proc_col_num));

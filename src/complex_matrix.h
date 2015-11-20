@@ -28,7 +28,7 @@ class Matrix
 	void create ();
 	void destroy ();
 
-	bool in_block (int, int);
+	bool in_block (int, int) const;
 
 	int* gather_info ();
 
@@ -49,7 +49,7 @@ public:
 	void set_data (double*);
 	void set_row (double*, int);
 
-	complexd& operator () (int, int);
+	const complexd operator () (int, int) const;
 
 	Matrix ();
 	Matrix (int, int, int, int);
@@ -77,6 +77,8 @@ public:
 
 	void operator >> (std::ostream&);
 	void operator << (std::istream&);
+	void stream_output (std::ostream&);
+	void stream_input (std::istream&);
 };
 
 std::ostream& operator << (std::ostream&, Matrix&);

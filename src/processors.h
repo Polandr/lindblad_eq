@@ -71,11 +71,11 @@ struct Distribution
 
 	int proc_grid_size () const { return ProcessorGrid::size(); }
 
-	int local_row_num ();
-	int local_col_num ();
+	int local_row_num () const;
+	int local_col_num () const;
 
-	int row_offset ();
-	int col_offset ();
+	int row_offset () const;
+	int col_offset () const;
 
 	void operator = (const Distribution&);
 };

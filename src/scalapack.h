@@ -10,8 +10,8 @@ extern "C" {
 	void Cblacs_exit( int error_code);
 	void Cblacs_gridmap( int* context, int* map, int ld_usermap, int np_row, int np_col);
 
-	int npreroc_(int *n, int *nb, int *iproc, int *isrcproc, int *nprocs);
-	int numroc_(int *n, int *nb, int *iproc, int *isrcproc, int *nprocs);
+	int npreroc_(const int *n, const int *nb, const int *iproc, const int *isrcproc, const int *nprocs);
+	int numroc_(const int *n, const int *nb, const int *iproc, const int *isrcproc, const int *nprocs);
 
 	void descinit_(int *idescal, int *m, int *n, int *mb, int *nb, int *dummy1 , int *dummy2 , int *icon, int *procRows, int *info);
 	void pzgemm_(char* TRANSA, char* TRANSB, int * M, int * N, int * K, double * ALPHA, double * A, int * IA, int * JA, int * DESCA, double * B, int * IB, int * JB, int * DESCB, double * BETA, double * C, int * IC, int * JC, int * DESCC);		

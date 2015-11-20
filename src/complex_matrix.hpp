@@ -2,6 +2,8 @@
 
 using namespace std;
 
+#define ONE_VAL_TAG 512
+
 class Matrix_exception: public std::exception
 {
 	mutable char* errstr; 
@@ -54,7 +56,6 @@ void Matrix::init_distribution (int rows = 0, int cols = 0,
 			  &(ProcessorGrid::context), &lld, &out);
 	if (out != 0)
 		throw Matrix_exception("incorrect descriptor initialization");
-
 }
 
 // Service functions-----------------------------------------------------------------
@@ -69,7 +70,7 @@ void Matrix::destroy()
 	delete [] data;
 }
 
-bool Matrix::in_block(int i, int j)
+bool Matrix::in_block(int i, int j) const
 {
 	return ((i >= info.row_offset()) &&
 			(i < info.row_offset() + n_rows) &&
@@ -78,8 +79,10 @@ bool Matrix::in_block(int i, int j)
 }
 		
 void Matrix::set (int i, int j, complexd val)
+// Global set
 {
-	data[i*n_cols+j] = val;
+	if (in_block(i,j))
+		data[(i - info.row_offset()) + n_rows * (j - info.col_offset())] = val;
 }
 
 void Matrix::set (int i, complexd val)
@@ -222,23 +225,28 @@ void Matrix::in_place_transposition ()
 	}
 }
 
-/*complexd& Matrix::operator () (int row, int col)
-// Local indexing
-{
-	if (row >= n_rows || row < 0 || col >= n_cols || col < 0) 
-		throw Matrix_exception("out of bounds");
-	else
-		return data[row*n_cols+col];
-}*/
-
-complexd& Matrix::operator () (int row, int col)
-// Indexing on local submatrix using global indices
+const complexd Matrix::operator () (int row, int col) const
+// Global read-only access to the element
 {
 	if (row >= global_n_rows() || row < 0 || col >= global_n_cols() || col < 0) 
 		throw Matrix_exception("out of bounds");
 	else
+	{
+		double value[2];
 		if (in_block(row,col))
-			return data[(row - info.row_offset()) + n_rows * (col - info.col_offset())];
+		{
+			value[0] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].real();
+			value[1] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].imag();
+			MPI_Send(value,2,MPI_DOUBLE,ProcessorGrid::root,ONE_VAL_TAG,MPI_COMM_WORLD);
+		}
+		if (ProcessorGrid::is_root())
+		{
+			MPI_Status status;
+			MPI_Recv(value,2,MPI_DOUBLE,MPI_ANY_SOURCE,ONE_VAL_TAG,MPI_COMM_WORLD,&status);
+		}
+		MPI_Bcast(value,2,MPI_DOUBLE,ProcessorGrid::root,MPI_COMM_WORLD);
+		return complexd(value[0],value[1]);
+	}
 }
 
 // Arithmetics----------------------------------------------------------------------------
@@ -275,8 +283,8 @@ Matrix Matrix::operator * (Matrix& b) const
 	double* a_data = get_data();
 	double* b_data = b.get_data();
 	double* c_data = c_matr.get_data();
-	double* alpha = (double*)malloc(2*sizeof(double));
-	double* beta = (double*)malloc(2*sizeof(double));
+	double alpha[2];
+	double beta[2];
 	alpha[0] = 1.0;
 	alpha[1] = 0.0;
 	beta[0] = 0.0; 
@@ -305,8 +313,8 @@ Matrix Matrix::operator ~ () const
 	int m = global_n_rows();
 	int n = global_n_cols();
 
-	double* alpha = (double*)malloc(2*sizeof(double));
-	double* beta = (double*)malloc(2*sizeof(double));
+	double alpha[2];
+	double beta[2];
 	alpha[0] = 1.0;
 	alpha[1] = 0.0;
 	beta[0] = 1.0; 
@@ -376,7 +384,8 @@ Matrix exp (Matrix A)
 	for (int i=distr.row_offset(); i<distr.row_offset()+D.n_rows; i++)
 		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
 			if (i==j)
-				D(i,j) = exp(eigenvalues[i]);
+				//D(i,j) = exp(eigenvalues[i]);
+				D.set(i,j,exp(eigenvalues[i]));
 
 	Out = U * D;
 	Out = Out * U_c;

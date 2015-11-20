@@ -17,16 +17,16 @@ class Solver
 
 public:
 
-	Matrix& get_H() { return H; }
-	Matrix& get_R0() { return R0; }
-	double& get_dT() { return dT; }
+	Matrix& get_hamiltonian() { return H; }
+	Matrix& get_density_matrix() { return R0; }
+	double& get_time_step() { return dT; }
 	int& get_step_num() { return step_num; }
 
-	void init_H(const char*);
-	void init_H(const Matrix&);
-	void init_R0(const char*);
-	void init_R0(const Matrix&);
-	void init_dT(double);
+	void init_hamiltonian(const char*);
+	void init_hamiltonian(const Matrix&);
+	void init_density_matrix(const char*);
+	void init_density_matrix(const Matrix&);
+	void init_time_step(double);
 	void init_step_num(int);
 	void init_system();
 

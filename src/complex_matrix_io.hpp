@@ -4,7 +4,40 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-// Global >>/<<:
+using namespace std;
+
+// Information about submatrices:
+
+int* Matrix::gather_info()
+{
+	int* total_info = NULL;
+	int my_info[4];
+	if (ProcessorGrid::is_root())
+		total_info = (int*)malloc(info.proc_grid_size()*4*sizeof(int));
+
+	my_info[0] = info.row_offset();
+	my_info[1] = info.col_offset();
+	my_info[2] = n_rows;
+	my_info[3] = n_cols;
+	MPI_Gather(my_info,4,MPI_INT,total_info,4,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
+
+	return total_info;
+}
+
+int get_proc_by_index(int* info, int row, int col)
+{
+	for (int i = 0; i < ProcessorGrid::size(); i++)
+	{
+		if (row >= info[4*i] &&
+			col >= info[4*i+1] &&
+			row < (info[4*i] + info[4*i+2]) &&
+			col < (info[4*i+1] + info[4*i+3]))
+			return i;
+	}
+}
+
+
+// Global stream I/O------------------------------------------------------------------------
 
 void Matrix::operator >> (std::ostream& out)
 {
@@ -40,17 +73,144 @@ void Matrix::operator << (std::istream& in)
 		}
 }
 
+void write_elems(ostream& out, double* buf, int count)
+{
+	for (int i = 0; i < count; i++)
+	{
+		out << setprecision(2) << 
+		'(' << buf[2*i] << ',' << buf[2*i+1] << ')';
+		if (i != count-1)
+			out << ' ';
+	}
+}
+
+void read_elems(istream& in, double* buf, int count)
+{
+	complexd val;
+	for (int i = 0; i < count; i++)
+	{
+		in >> val;
+		buf[2*i] = val.real();
+		buf[2*i+1] = val.imag();
+	}
+}
+
+void Matrix::stream_output (ostream& out)
+{
+	int* local_proc_info = gather_info();
+
+	if (ProcessorGrid::is_root())
+	// Root
+	{
+		int root_row = 0;
+
+		for (int ofs = 0; ofs < global_n_rows()*global_n_cols(); )
+		{
+			int row = ofs / global_n_cols();
+			int col = ofs % global_n_cols();
+			int src_proc = get_proc_by_index(local_proc_info,row,col);
+			int length = local_proc_info[src_proc*4+3];
+			double* buf = (double*)malloc(length*2*sizeof(double));
+
+			if (src_proc == ProcessorGrid::root)
+			{
+				get_row(buf,root_row);
+				root_row++;
+			}
+			else
+			{
+				MPI_Status status;
+				MPI_Recv(buf,2*length,MPI_DOUBLE,src_proc,0,MPI_COMM_WORLD,&status);
+			}
+			ofs += length;
+			
+			write_elems(out,buf,length);
+			if (ofs % global_n_cols() == 0)
+				out << endl;
+			else
+				out << ' ';
+
+			free(buf);
+		}
+
+		out << flush;
+	}
+	else
+	// Not root
+	{
+		double* buf = (double*)malloc(n_cols*2*sizeof(double));
+		for (int i = 0; i < n_rows; i++)
+		{
+			get_row(buf,i);
+			MPI_Send(buf,n_cols*2,MPI_DOUBLE,ProcessorGrid::root,0,MPI_COMM_WORLD);
+		}
+		free(buf);
+	}
+}
+
+void Matrix::stream_input (istream& in)
+{
+	int* local_proc_info = gather_info();
+
+	if (ProcessorGrid::is_root())
+	// Root
+	{
+		int root_row = 0;
+
+		for (int ofs = 0; ofs < global_n_rows()*global_n_cols(); )
+		{
+			int row = ofs / global_n_cols();
+			int col = ofs % global_n_cols();
+			int trg_proc = get_proc_by_index(local_proc_info,row,col);
+			// Get number of cols of local matrix on trg_proc:
+			int length = local_proc_info[trg_proc*4+3];
+			double* buf = (double*)malloc(length*2*sizeof(double));
+
+			read_elems(in,buf,length);
+			ofs += length;
+
+			if (trg_proc == ProcessorGrid::root)
+			{
+				set_row(buf,root_row);
+				root_row++;
+			}
+			else
+			{
+				MPI_Send(buf,2*length,MPI_DOUBLE,trg_proc,0,MPI_COMM_WORLD);
+			}
+
+			free(buf);
+		}
+	}
+	else
+	// Not root
+	{
+		double* buf = (double*)malloc(n_cols*2*sizeof(double));
+		MPI_Status status;
+		for (int i = 0; i < n_rows; i++)
+		{
+			MPI_Recv(buf,n_cols*2,MPI_DOUBLE,ProcessorGrid::root,0,MPI_COMM_WORLD,&status);
+			set_row(buf,i);
+		}
+		free(buf);
+	}
+}
+
 ostream &operator << (ostream &out, Matrix &mat)
 {
-	mat >> out;
+	//mat >> out;
+	mat.stream_output(out);
 	return out;
 }
 
 istream &operator >> (istream &in, Matrix &mat)
 {
-	mat << in;
+	//mat << in;
+	mat.stream_input(in);
 	return in;
 }
+
+// Service functions---------------------------------------------------------------------------
 
 int bin_or_txt (const char* filename) /* 0 - error, 1 - binary, 2 - text */
 {
@@ -74,7 +234,6 @@ int bin_or_txt (const char* filename) /* 0 - error, 1 - binary, 2 - text */
 		}
 }
 
-// Service functions---------------------------------------------------------------------------
 // Read:
 
 void read_header(int fd, int* dims)
@@ -140,40 +299,9 @@ void write_elems(FILE* file, double* buf, int count)
 	}
 }
 
-// Communications:
-
-int* Matrix::gather_info()
-{
-	int* total_info = NULL;
-	int my_info[4];
-	if (ProcessorGrid::is_root())
-		total_info = (int*)malloc(info.proc_grid_size()*4*sizeof(int));
-
-	my_info[0] = info.row_offset();
-	my_info[1] = info.col_offset();
-	my_info[2] = n_rows;
-	my_info[3] = n_cols;
-	MPI_Gather(my_info,4,MPI_INT,total_info,4,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
-
-	return total_info;
-}
-
-int get_target(int* info, int row, int col)
-{
-	for (int i = 0; i < ProcessorGrid::size(); i++)
-	{
-		if (row >= info[4*i] &&
-			col >= info[4*i+1] &&
-			row < (info[4*i] + info[4*i+2]) &&
-			col < (info[4*i+1] + info[4*i+3]))
-			return i;
-	}
-}
-
 // I/O with files:
 
 int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
-
 // Read from file
 // root returns 0 in case of error
 // root returns 1 in case of binary file read
@@ -195,7 +323,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 			if (fd < 0)
 			{
 				throw Matrix_exception("failed to open file to import");
-				MPI_Abort(MPI_COMM_WORLD,-1);
+				//MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			read_header(fd,dims);
 		}
@@ -207,17 +335,17 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 			if (file == NULL)
 			{
 				throw Matrix_exception("failed to open file to import");
-				MPI_Abort(MPI_COMM_WORLD,-1);
+				//MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			read_header(file,dims);
 		}
 	}
 
-	MPI_Bcast(dims,2,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
 	MPI_Bcast(&mode,1,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
 	if (mode == 0)
 		throw Matrix_exception("wrong file format (undefined header)");
 
+	MPI_Bcast(dims,2,MPI_INT,ProcessorGrid::root,MPI_COMM_WORLD);
 	init(dims[0],dims[1],row_block,col_block);
 	int* local_proc_info = gather_info();
 
@@ -230,7 +358,7 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 		{
 			int row = ofs / global_n_cols();
 			int col = ofs % global_n_cols();
-			int trg_proc = get_target(local_proc_info,row,col);
+			int trg_proc = get_proc_by_index(local_proc_info,row,col);
 			// Get number of cols of local matrix on trg_proc:
 			int length = local_proc_info[trg_proc*4+3];
 			double* buf = (double*)malloc(length*2*sizeof(double));
@@ -246,7 +374,6 @@ int Matrix::readf(const char* filename, int row_block = R_BLOCK_SIZE, int col_bl
 					fscanf(file, " ");
 			}
 			ofs += length;
-
 
 			if (trg_proc == ProcessorGrid::root)
 			{
@@ -306,7 +433,7 @@ void Matrix::writef(int mode, const char* filename)
 			if (!fd.is_open())
 			{
 				throw Matrix_exception("failed to open file to export");
-				MPI_Abort(MPI_COMM_WORLD,-1);
+				//MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			write_header(fd,global_n_rows(),global_n_cols());
 		}
@@ -318,7 +445,7 @@ void Matrix::writef(int mode, const char* filename)
 			if (file == NULL)
 			{
 				throw Matrix_exception("failed to open file to export");
-				MPI_Abort(MPI_COMM_WORLD,-1);
+				//MPI_Abort(MPI_COMM_WORLD,-1);
 			}
 			write_header(file,global_n_rows(),global_n_cols());
 		}
@@ -335,7 +462,7 @@ void Matrix::writef(int mode, const char* filename)
 		{
 			int row = ofs / global_n_cols();
 			int col = ofs % global_n_cols();
-			int src_proc = get_target(local_proc_info,row,col);
+			int src_proc = get_proc_by_index(local_proc_info,row,col);
 			int length = local_proc_info[src_proc*4+3];
 			double* buf = (double*)malloc(length*2*sizeof(double));
 
@@ -425,7 +552,7 @@ void Matrix::print_diagonal_abs(FILE* file)
 	for (int i = 0; i < min_dim; i++)
 		if (ProcessorGrid::is_root())
 		{
-			int src_proc = get_target(local_proc_info,i,i);
+			int src_proc = get_proc_by_index(local_proc_info,i,i);
 			double magnitude;
 			if (src_proc != ProcessorGrid::root)
 			{
