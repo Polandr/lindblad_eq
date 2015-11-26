@@ -333,7 +333,7 @@ Matrix Matrix::operator ~ () const
 	double* a_data = get_data();
 	double* c_data = c_matr.get_data();
 	
-	pzgeadd_((char*) "T", &m, &n, 
+	pzgeadd_((char*) "C", &m, &n, 
 		alpha, a_data, &row_offset, &col_offset, distrA.descriptor, 
 		beta, c_data, &row_offset, &col_offset, distrC.descriptor);
 
