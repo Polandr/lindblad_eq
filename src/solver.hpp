@@ -6,8 +6,6 @@
 #define DEFAULT_DT 0.1
 #define DEFAULT_STEP_NUM 1
 
-const double Plank_const = 1.0;
-
 using namespace std;
 
 // Solver exception class-----------------------------------------------------------------
@@ -251,15 +249,14 @@ void Solver::solve (const char* filename)
 	else
 		print_header(stdout);
 
-	complexd imag_unit(0,1);
-	Matrix U = exp(H*((-imag_unit)*dT/Plank_const));
-	Matrix conj_U = ~U;
+	Matrix U = exp(H, dT); 
+	Matrix U_c = ~U;
 	Matrix Rt = R0;
 
 	for (int i = 0; i < step_num; i++)
 	{
-		Rt = U*Rt;
-		Rt = Rt*conj_U;
+		Rt = U_c*Rt; 
+		Rt = Rt*U; 
 		if (filename != NULL)
 			Rt.print_diagonal_abs(file);
 		else

@@ -2,6 +2,7 @@
 
 using namespace std;
 
+const double Plank_const = 1.0;
 #define ONE_VAL_TAG 512
 
 class Matrix_exception: public std::exception
@@ -265,6 +266,15 @@ Matrix Matrix::operator * (complexd val) const
 	return out;
 }
 
+Matrix& Matrix::diagMul (complexd val)
+{
+	for (int i = 0; i < n_rows; i++)
+		for (int j =0; j< n_cols; j++)
+			if (i==j)
+				data[i*n_cols+j] *= val;
+	return *this;
+}
+
 Matrix Matrix::operator * (Matrix& b) const
 {
 	Matrix c_matr(global_n_rows(), b.global_n_cols());
@@ -348,7 +358,7 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	int col_offset = 1;
 
 	int lrwork = 2*n + 2*n-2;
-	int lwork = 5000;
+	int lwork = 10000;
 	double *work = (double*)malloc(lwork*sizeof(double));
 	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
@@ -366,31 +376,39 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 
 	Z.set_data(z);
 
+	Z.in_place_transposition();
+
 	return Z;
 }
 
-Matrix exp (Matrix A)
+
+Matrix exp (Matrix A, double dT)
 {
 	vector<complexd> eigenvalues;
+	complexd imag_unit(0,1);
+
+	complexd koeff = -imag_unit*dT/Plank_const; 
+
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
 	Matrix U(A.global_n_rows(), A.global_n_cols());
 	Matrix U_c(A.global_n_cols(), A.global_n_rows());
 	Matrix D(A.global_n_rows(), A.global_n_cols());
+	Distribution distr = D.get_distribution(); 
 
 	U = A.diagonalize(eigenvalues);
-	U_c = ~U;
-	Distribution distr = D.get_distribution();
+	U_c = ~U;  
 
-	for (int i=distr.row_offset(); i<distr.row_offset()+D.n_rows; i++)
-		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
+	for (int i=distr.row_offset()+D.n_rows; i>=distr.row_offset(); i--)
+		for (int j=distr.col_offset()+D.n_cols; j>=distr.col_offset(); j--)
 			if (i==j)
-				//D(i,j) = exp(eigenvalues[i]);
-				D.set(i,j,exp(eigenvalues[i]));
+			{
+				D.set(i,j,exp(eigenvalues[i])*koeff);
+			}
 
-	Out = U * D;
-	Out = Out * U_c;
-	
-	return D;
+	Out = U_c * D; 
+	Out = Out * U;
+
+	return Out;
 }
 
 

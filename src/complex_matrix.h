@@ -62,6 +62,7 @@ public:
 	Matrix& operator = (const Matrix&);
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
+	Matrix& diagMul (complexd);
 	Matrix operator * (Matrix&) const;
 	Matrix operator ~ () const;
 	Matrix diagonalize(std::vector<complexd>&) const;
@@ -85,7 +86,7 @@ public:
 std::ostream& operator << (std::ostream&, Matrix&);
 std::istream& operator >> (std::istream&, Matrix&);
 
-Matrix exp (Matrix);
+Matrix exp (Matrix, double);
 
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"
