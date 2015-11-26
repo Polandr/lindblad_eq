@@ -77,7 +77,7 @@ void write_elems(ostream& out, double* buf, int count)
 {
 	for (int i = 0; i < count; i++)
 	{
-		out << setprecision(2) << 
+		out << /*setprecision(2) << */
 		'(' << buf[2*i] << ',' << buf[2*i+1] << ')';
 		if (i != count-1)
 			out << ' ';
@@ -548,7 +548,7 @@ void Matrix::print_diagonal_abs(FILE* file)
 {
 	int min_dim = (global_n_rows() < global_n_cols())? global_n_rows() : global_n_cols();
 	int* local_proc_info = gather_info();
-	//cout << "I'm here <" << ProcessorGrid::my_proc << ">\n";
+
 	for (int i = 0; i < min_dim; i++)
 		if (ProcessorGrid::is_root())
 		{

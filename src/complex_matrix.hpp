@@ -409,7 +409,7 @@ Matrix exp (Matrix A, complexd c)
 	Out = U_c * D;
 	Out = Out * U;
 	
-	return D;
+	return Out;
 }
 
 

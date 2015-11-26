@@ -15,20 +15,20 @@ int main(int argc, char** argv)
 	Solver solver;
 	solver.init_hamiltonian(H);
 	solver.init_density_matrix(R0);
-	solver.init_time_step(0.5);
+	solver.init_time_step(1);
 	solver.init_step_num(4);
 
-	solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
-	solver.get_density_matrix().writef(2,"matrices/init_density");
+	//solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
+	//solver.get_density_matrix().writef(2,"matrices/init_density");
 
 	solver.solve(NULL);
 
 	vector<complexd> eigenvalues;
 	Matrix base_H = H.diagonalize(eigenvalues);
 
-	//cout << H;
-	//if (ProcessorGrid::is_root())
-	//	cout << endl;
+	cout << H;
+	if (ProcessorGrid::is_root())
+		cout << endl;
 
 	/*cout << base_H;
 	if (ProcessorGrid::is_root())
@@ -39,8 +39,19 @@ int main(int argc, char** argv)
 		for (int i = 0; i < eigenvalues.size(); i++)
 			cout << eigenvalues[i] << endl;
 		cout << endl;
-	}*/
+	}
 
+	Matrix exp_H = exp(H,1.0);
+	cout << exp_H;*/
+
+	Matrix A(8,8), B(8,8);
+
+	A.generate(identity_matrix);
+	B.generate(index_indicator);
+
+	Matrix C = A*B;
+
+	cout << C;
 
 	ProcessorGrid::exit();
 }
