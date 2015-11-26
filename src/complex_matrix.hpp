@@ -1,18 +1,21 @@
+// Matrix class realization
+
 using namespace std;
 
-//typedef complex<double> complexd;
+const double Plank_const = 1.0;
+#define ONE_VAL_TAG 512
 
-class My_exception: public std::exception
+class Matrix_exception: public std::exception
 {
 	mutable char* errstr; 
 
 	public:
 
-	My_exception(const char* str = "")
+	Matrix_exception(const char* str = "")
 	{
 		errstr = const_cast <char*> (str);
 	}
-	~My_exception() throw()
+	~Matrix_exception() throw()
 	{
 		delete [] errstr;
 	}
@@ -33,118 +36,7 @@ class My_exception: public std::exception
 	}	
 };
 
-// Parallel distribution-------------------------------------------------------------
-
-// Distribution struct:
-
-void Distribution::set_matrix_dims (int rows = 0, int cols = 0)
-{
-	matrix_global_rows = rows;
-	matrix_global_cols = cols;
-}
-
-void Distribution::set_block_sizes (int row_size = R_BLOCK_SIZE, int col_size = C_BLOCK_SIZE)
-{
-	row_block_size = row_size;
-	col_block_size = col_size;		
-}
-
-// Size and offset of local matrix:
-
-int Distribution::local_row_num ()
-{
-	return numroc_(&matrix_global_rows,&row_block_size,
-		&(ProcessorGrid::my_proc_row),&(ProcessorGrid::start_proc_row),&(ProcessorGrid::proc_row_num));
-}
-
-int Distribution::local_col_num ()
-{
-	return numroc_(&matrix_global_cols,&col_block_size,
-		&(ProcessorGrid::my_proc_col),&(ProcessorGrid::start_proc_col),&(ProcessorGrid::proc_col_num));
-}
-
-int Distribution::row_offset ()
-{
-	return npreroc_(&matrix_global_rows,&row_block_size,
-		&(ProcessorGrid::my_proc_row),&(ProcessorGrid::start_proc_row),&(ProcessorGrid::proc_row_num));
-}
-
-int Distribution::col_offset ()
-{
-	return npreroc_(&matrix_global_cols,&col_block_size,
-		&(ProcessorGrid::my_proc_col),&(ProcessorGrid::start_proc_col),&(ProcessorGrid::proc_col_num));
-}
-
-void Distribution::operator = (const Distribution& other)
-{
-	row_block_size = other.row_block_size;
-	col_block_size = other.col_block_size;
-	matrix_global_rows = other.matrix_global_rows;
-	matrix_global_cols = other.matrix_global_cols;
-	for (int i = 0; i < DESC_LEN; i++)
-		descriptor[i] = other.descriptor[i];
-}
-
-
-// ProcessorGrid struct:
-
-void ProcessorGrid::init (int proc_rows = PRC_R, int proc_cols = PRC_C,
-	int start_row = STRT_R, int start_col = STRT_C, int rt = ROOT)
-{
-	int grid_size;
-	Cblacs_pinfo(&my_proc,&grid_size);
-	if (proc_rows*proc_cols > grid_size ||
-		my_proc < 0 || my_proc >= grid_size)
-		throw My_exception("incorrect grid initialization");
-
-	root = rt;
-	start_proc_row = start_row;
-	start_proc_col = start_col;
-
-	Cblacs_get(0,0,&context);
-	Cblacs_gridinit(&context, (char *)"Column", proc_rows, proc_cols);
-	Cblacs_gridinfo(context,&proc_row_num,&proc_col_num,&my_proc_row,&my_proc_col);
-
-	if (my_proc == rt)
-		printf("Grid initialized!\n");
-
-	initialized = true;
-}
-
-void ProcessorGrid::default_init ()
-{
-	int proc_num, grid_size;
-	Cblacs_pinfo(&proc_num,&grid_size);
-	int proc_dim = (int)sqrt(grid_size);
-	if (proc_num == ROOT)
-	{
-		cout << flush;
-		cout << "WARNING" << endl;
-		cout << "Using default process grid initialization:" << endl;
-		cout << "Root process has number: " << ROOT << endl;
-		cout << "Process grid is " << proc_dim << "x" << proc_dim << 
-		" starting from (" << STRT_R << "," << STRT_C << ") process." << endl;
-		cout << flush;
-	}
-	ProcessorGrid::init(proc_dim, proc_dim, STRT_R, STRT_C, ROOT);
-}
-
-void ProcessorGrid::square_init (int start_row = STRT_R, int start_col = STRT_C, int rt = ROOT)
-{
-	int proc_num, grid_size;
-	Cblacs_pinfo(&proc_num,&grid_size);
-	int proc_dim = (int)sqrt(grid_size);
-	ProcessorGrid::init(proc_dim, proc_dim, start_row, start_col, rt);
-}
-
-void ProcessorGrid::exit()
-{
-	Cblacs_gridexit(context);
-	Cblacs_exit(0);
-}
-
-
-// Matrix class:
+// Matrix grid initialization
 
 void Matrix::init_distribution (int rows = 0, int cols = 0,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
@@ -164,8 +56,7 @@ void Matrix::init_distribution (int rows = 0, int cols = 0,
 			  &(ProcessorGrid::start_proc_row), &(ProcessorGrid::start_proc_col),
 			  &(ProcessorGrid::context), &lld, &out);
 	if (out != 0)
-		throw My_exception("incorrect descriptor initialization");
-
+		throw Matrix_exception("incorrect descriptor initialization");
 }
 
 // Service functions-----------------------------------------------------------------
@@ -180,7 +71,7 @@ void Matrix::destroy()
 	delete [] data;
 }
 
-bool Matrix::in_block(int i, int j)
+bool Matrix::in_block(int i, int j) const
 {
 	return ((i >= info.row_offset()) &&
 			(i < info.row_offset() + n_rows) &&
@@ -189,8 +80,10 @@ bool Matrix::in_block(int i, int j)
 }
 		
 void Matrix::set (int i, int j, complexd val)
+// Global set
 {
-	data[i*n_cols+j] = val;
+	if (in_block(i,j))
+		data[(i - info.row_offset()) + n_rows * (j - info.col_offset())] = val;
 }
 
 void Matrix::set (int i, complexd val)
@@ -253,7 +146,7 @@ Matrix::Matrix (int rows, int cols,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
 	if (rows <= 0 || cols <= 0)
-		throw My_exception("invalid matrix size");
+		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
 	n_cols = info.local_col_num();
@@ -267,7 +160,7 @@ void Matrix::init (int rows, int cols,
 {
 	this->~Matrix();
 	if (rows <= 0 || cols <= 0)
-		throw My_exception("invalid matrix size");
+		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
 	n_cols = info.local_col_num();
@@ -307,7 +200,7 @@ Matrix& Matrix::operator = (const Matrix& other)
 	return *this;
 }
 
-void Matrix::local_data_transpose ()
+void Matrix::in_place_transposition ()
 {
 	for (int i = 1; i < (n_rows*n_cols-1); i++)
 	{
@@ -333,37 +226,53 @@ void Matrix::local_data_transpose ()
 	}
 }
 
-/*complexd& Matrix::operator () (int row, int col)
-// Local indexing
-{
-	if (row >= n_rows || row < 0 || col >= n_cols || col < 0) 
-		throw My_exception("out of bounds");
-	else
-		return data[row*n_cols+col];
-}*/
-
-complexd& Matrix::operator () (int row, int col)
-// Global indexing
+const complexd Matrix::operator () (int row, int col) const
+// Global read-only access to the element
 {
 	if (row >= global_n_rows() || row < 0 || col >= global_n_cols() || col < 0) 
-		throw My_exception("out of bounds");
+		throw Matrix_exception("out of bounds");
 	else
+	{
+		double value[2];
 		if (in_block(row,col))
-			return data[(row - info.row_offset()) + n_rows * (col - info.col_offset())];
+		{
+			value[0] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].real();
+			value[1] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].imag();
+			MPI_Send(value,2,MPI_DOUBLE,ProcessorGrid::root,ONE_VAL_TAG,MPI_COMM_WORLD);
+		}
+		if (ProcessorGrid::is_root())
+		{
+			MPI_Status status;
+			MPI_Recv(value,2,MPI_DOUBLE,MPI_ANY_SOURCE,ONE_VAL_TAG,MPI_COMM_WORLD,&status);
+		}
+		MPI_Bcast(value,2,MPI_DOUBLE,ProcessorGrid::root,MPI_COMM_WORLD);
+		return complexd(value[0],value[1]);
+	}
 }
 
 // Arithmetics----------------------------------------------------------------------------
 
-Matrix Matrix::operator * (double b) const
+Matrix& Matrix::operator *= (complexd val)
 {
-	Matrix A(*this);
-	Distribution distr = get_distribution();
-	for (int i=distr.row_offset(); i<distr.row_offset()+n_rows; i++)
-		for (int j=distr.col_offset(); j<distr.col_offset()+n_cols; j++)
-		{
-			A(i,j) = A(i,j) * b;
-		}
-	return A;
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] *= val;
+	return *this;
+}
+
+Matrix Matrix::operator * (complexd val) const
+{
+	Matrix out(*this);
+	out *= val;
+	return out;
+}
+
+Matrix& Matrix::diagMul (complexd val)
+{
+	for (int i = 0; i < n_rows; i++)
+		for (int j =0; j< n_cols; j++)
+			if (i==j)
+				data[i*n_cols+j] *= val;
+	return *this;
 }
 
 Matrix Matrix::operator * (Matrix& b) const
@@ -384,8 +293,8 @@ Matrix Matrix::operator * (Matrix& b) const
 	double* a_data = get_data();
 	double* b_data = b.get_data();
 	double* c_data = c_matr.get_data();
-	double* alpha = (double*)malloc(2*sizeof(double));
-	double* beta = (double*)malloc(2*sizeof(double));
+	double alpha[2];
+	double beta[2];
 	alpha[0] = 1.0;
 	alpha[1] = 0.0;
 	beta[0] = 0.0; 
@@ -414,8 +323,8 @@ Matrix Matrix::operator ~ () const
 	int m = global_n_rows();
 	int n = global_n_cols();
 
-	double* alpha = (double*)malloc(2*sizeof(double));
-	double* beta = (double*)malloc(2*sizeof(double));
+	double alpha[2];
+	double beta[2];
 	alpha[0] = 1.0;
 	alpha[1] = 0.0;
 	beta[0] = 1.0; 
@@ -449,7 +358,7 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	int col_offset = 1;
 
 	int lrwork = 2*n + 2*n-2;
-	int lwork = 5000;
+	int lwork = 10000;
 	double *work = (double*)malloc(lwork*sizeof(double));
 	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
@@ -467,30 +376,39 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 
 	Z.set_data(z);
 
+	Z.in_place_transposition();
+
 	return Z;
 }
 
-Matrix exp (Matrix& A)
+
+Matrix exp (Matrix A, double dT)
 {
 	vector<complexd> eigenvalues;
+	complexd imag_unit(0,1);
+
+	complexd koeff = -imag_unit*dT/Plank_const; 
+
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
 	Matrix U(A.global_n_rows(), A.global_n_cols());
 	Matrix U_c(A.global_n_cols(), A.global_n_rows());
 	Matrix D(A.global_n_rows(), A.global_n_cols());
+	Distribution distr = D.get_distribution(); 
 
 	U = A.diagonalize(eigenvalues);
-	U_c = ~U;
-	Distribution distr = D.get_distribution();
+	U_c = ~U;  
 
-	for (int i=distr.row_offset(); i<distr.row_offset()+D.n_rows; i++)
-		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
+	for (int i=distr.row_offset()+D.n_rows; i>=distr.row_offset(); i--)
+		for (int j=distr.col_offset()+D.n_cols; j>=distr.col_offset(); j--)
 			if (i==j)
-				D(i,j) = exp(eigenvalues[i]);
+			{
+				D.set(i,j,exp(eigenvalues[i])*koeff);
+			}
 
-	Out = U * D;
-	Out = Out * U_c;
-	
-	return D;
+	Out = U_c * D; 
+	Out = Out * U;
+
+	return Out;
 }
 
 

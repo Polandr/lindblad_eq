@@ -1,32 +1,38 @@
 #include "complex_matrix.h"
 #include "solver.h"
 
+using namespace std;
+complexd myH(int i, int j)
+{
+	if ((i==0)&&(j==1)) return 1;
+	if ((i==1)&&(j==0)) return 1;
+	if (i==j) return 1;
+	return 0;
+}
+
+complexd myR(int i, int j)
+{
+	return ((i == 0)&&(j==0)) ? 1 : 0;
+}
+
 int main(int argc, char** argv)
 {
 	ProcessorGrid::default_init();
 
-	int N = 3;
+	Matrix H(4,4), R0(4,4);
+	H.generate(myH);
+	R0.generate(myR);
 
-	/*Matrix H(8,8);
-	H.generate(random_lower_triangle);
-	H.writef(2,"Matrix_H");
+	Solver solver;
+	solver.init_hamiltonian(H);
+	solver.init_density_matrix(R0);
+	solver.init_time_step(0.2);
+	solver.init_step_num(1);
 
-	Matrix R(8,8);
-	R.generate(diagonal_natural_sequence);
-	R.writef(2,"Matrix_R");*/
+	solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
+	solver.get_density_matrix().writef(2,"matrices/init_density");
 
-	Solver sol;
-	sol.init_H("Matrix_H");
-	sol.init_R0("Matrix_R");
-	sol.init_dT(0.1);
-	sol.init_step_num(N);
-
-	Matrix H = sol.get_H();
-	Matrix R = sol.get_R0();
-	double dT = sol.get_dT();
-	int step = sol.get_step_num();
-
-	sol.solve("Matrix_out");
+	solver.solve(NULL);
 
 	ProcessorGrid::exit();
 }

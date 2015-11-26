@@ -1,5 +1,5 @@
 CXX= mpicxx
-HDRS= complex_matrix.h complex_matrix.hpp complex_matrix_io.hpp scalapack.h
+HDRS= solver.h solver.hpp processors.h processors.hpp complex_matrix.h complex_matrix.hpp complex_matrix_io.hpp scalapack.h
 
 first: my_test
 
