@@ -67,7 +67,7 @@ int unit_num(int state, int N)
 	return out;
 }
 
-void collect_base_states (int E_lvl, int N, vector<int>& base_states)
+void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states)
 {
 	int mask = 1;
 	int full_energy_state = 0;
@@ -80,7 +80,8 @@ void collect_base_states (int E_lvl, int N, vector<int>& base_states)
 	int pow_N = pow(2,N);
 	for (int i = 0; i < pow_N; i++)
 	{
-		if (unit_num(i,N) == E_lvl)
+		int E_lvl = unit_num(i,N);
+		if (E_lvl >= E_low && E_lvl <= E_high)
 			cur_base_states.push_back(i);
 	}
 	base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
@@ -175,7 +176,11 @@ void Solver::init_hamiltonian (const Matrix& matrix_H)
 }
 
 void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w)
-// N - dimension of syste
+// N - dimension of system
+// s - maximum stock level
+// E_min, E_max - minimum and maximum energy levels
+// a - probabilities between atoms
+// w - probabilities on atoms
 {
 	if (a.size() != N-1 || w.size() != N)
 		throw Solver_exception("incorrect parameters in hamiltonian initialization");
@@ -186,8 +191,7 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 	{
 		int low = max(0,E_min-s);
 		int high = max(0,E_max-s);
-		for (int E_lvl = low; E_lvl <= high; E_lvl++)
-			collect_base_states(E_lvl,N,base_states);
+		collect_base_states(low,high,N,base_states);
 	}
 
 	H.init(base_states.size(),base_states.size());

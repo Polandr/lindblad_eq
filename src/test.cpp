@@ -6,7 +6,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
 	//ProcessorGrid::square_init();
-	ProcessorGrid::default_init();
+	/*ProcessorGrid::default_init();
 
 	Matrix H(8,8), R0(8,8);
 	H.generate(test_H);
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	if (ProcessorGrid::is_root())
 		cout << endl;
 
-	/*cout << base_H;
+	cout << base_H;
 	if (ProcessorGrid::is_root())
 		cout << endl;
 
@@ -44,14 +44,20 @@ int main(int argc, char** argv)
 	Matrix exp_H = exp(H,1.0);
 	cout << exp_H;*/
 
-	Matrix A(8,8), B(8,8);
+	vector<complexd> a(2), w(3);
 
-	A.generate(identity_matrix);
-	B.generate(index_indicator);
+	a[0] = 0;
+	a[1] = 1;
 
-	Matrix C = A*B;
+	w[0] = 1;
+	w[1] = 2;
+	w[2] = 3;
 
-	cout << C;
+	Solver solver;
+
+	solver.init_hamiltonian(3,0,0,3,a,w);
+
+	solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
 
 	ProcessorGrid::exit();
 }

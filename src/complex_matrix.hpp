@@ -144,7 +144,7 @@ Matrix::Matrix ()
 Matrix::Matrix (int rows, int cols,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
-	if (rows <= 0 || cols <= 0)
+	if (rows < 0 || cols < 0)
 		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
@@ -158,7 +158,7 @@ void Matrix::init (int rows, int cols,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
 	this->~Matrix();
-	if (rows <= 0 || cols <= 0)
+	if (rows < 0 || cols < 0)
 		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
