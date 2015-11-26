@@ -317,7 +317,7 @@ Matrix Matrix::operator ~ () const
 	double beta[2];
 	alpha[0] = 1.0;
 	alpha[1] = 0.0;
-	beta[0] = 1.0; 
+	beta[0] = 0.0; 
 	beta[1] = 0.0;
 
 	double* a_data = get_data();
@@ -330,6 +330,20 @@ Matrix Matrix::operator ~ () const
 	c_matr.set_data(c_data);
 
 	return c_matr;
+}
+
+Matrix Matrix::conj () const
+{
+	Matrix out(*this);
+	for (int i = 0; i < n_rows*n_cols; i++)
+		out.set(i,std::conj(data[i]));
+	return out;
+}
+
+Matrix Matrix::herm_conj () const
+{
+	Matrix out = this->conj();
+	return ~out;
 }
 
 Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
@@ -348,8 +362,8 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	int col_offset = 1;
 
 	int lrwork = 2*n + 2*n-2;
-	int lwork = 5000;
-	double *work = (double*)malloc(lwork*sizeof(double));
+	int lwork = 10000;
+	double* work = (double*)malloc(lwork*sizeof(double));
 	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
 
@@ -359,6 +373,9 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 		z, &row_offset, &col_offset, distrZ.descriptor, 
 		work, &lwork, rwork, &lrwork, &ret_info);
 
+	free(work);
+	free(rwork);
+
 	for (int i=0; i<global_n_rows(); i++)
 	{
 		eigenvalues.push_back(w[i]);
@@ -366,29 +383,31 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 
 	Z.set_data(z);
 
+	Z = ~Z;
+
 	return Z;
 }
 
-Matrix exp (Matrix A)
+Matrix exp (Matrix A, complexd c)
 {
 	vector<complexd> eigenvalues;
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
 	Matrix U(A.global_n_rows(), A.global_n_cols());
 	Matrix U_c(A.global_n_cols(), A.global_n_rows());
 	Matrix D(A.global_n_rows(), A.global_n_cols());
+	Distribution distr = D.get_distribution();
 
 	U = A.diagonalize(eigenvalues);
-	U_c = ~U;
-	Distribution distr = D.get_distribution();
+	U_c = U.herm_conj();
 
 	for (int i=distr.row_offset(); i<distr.row_offset()+D.n_rows; i++)
 		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
 			if (i==j)
 				//D(i,j) = exp(eigenvalues[i]);
-				D.set(i,j,exp(eigenvalues[i]));
+				D.set(i,j,exp(eigenvalues[i])*c);
 
-	Out = U * D;
-	Out = Out * U_c;
+	Out = U_c * D;
+	Out = Out * U;
 	
 	return D;
 }

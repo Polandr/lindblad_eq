@@ -59,11 +59,13 @@ public:
 
 
 	void in_place_transposition();
+	Matrix operator ~ () const;
+	Matrix conj () const;
+	Matrix herm_conj () const;
 	Matrix& operator = (const Matrix&);
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
 	Matrix operator * (Matrix&) const;
-	Matrix operator ~ () const;
 	Matrix diagonalize(std::vector<complexd>&) const;
 
 // I/O part
@@ -85,7 +87,7 @@ public:
 std::ostream& operator << (std::ostream&, Matrix&);
 std::istream& operator >> (std::istream&, Matrix&);
 
-Matrix exp (Matrix);
+Matrix exp (Matrix,complexd);
 
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"

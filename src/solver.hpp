@@ -2,7 +2,7 @@
 #include <cmath>
 
 #define DEFAULT_H_FILE "Matrix_H"
-#define DEFAULT_R0_FILE "Matrix_R0"
+#define DEFAULT_R_FILE "Matrix_R"
 #define DEFAULT_DT 0.1
 #define DEFAULT_STEP_NUM 1
 
@@ -159,6 +159,9 @@ void Solver::init_hamiltonian (const char* filename = DEFAULT_H_FILE)
 	H.readf(filename);
 	if (!(H.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
+	base_states.resize(0);
+	for (int i = 0; i < H.global_n_rows(); i++)
+		base_states.push_back(i);
 }
 
 void Solver::init_hamiltonian (const Matrix& matrix_H)
@@ -166,14 +169,17 @@ void Solver::init_hamiltonian (const Matrix& matrix_H)
 	H = matrix_H;
 	if (!(H.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
+	base_states.resize(0);
+	for (int i = 0; i < H.global_n_rows(); i++)
+		base_states.push_back(i);
 }
 
 void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w)
+// N - dimension of syste
 {
 	if (a.size() != N-1 || w.size() != N)
 		throw Solver_exception("incorrect parameters in hamiltonian initialization");
 	s = min(s,E_max);
-	vector<int> base_states;
 	int E_lowest = max(0,E_min-s);
 
 	for (int i = 0; i <= s; i++)
@@ -197,23 +203,23 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 
 // Initial density matrix initialization:
 
-void Solver::init_density_matrix (const char* filename = DEFAULT_R0_FILE)
+void Solver::init_density_matrix (const char* filename = DEFAULT_R_FILE)
 {
-	R0.readf(filename);
-	if (!(R0.is_square()))
+	R.readf(filename);
+	if (!(R.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
 }
 
-void Solver::init_density_matrix (const Matrix& matrix_R0)
+void Solver::init_density_matrix (const Matrix& matrix_R)
 {
-	R0 = matrix_R0;
-	if (!(R0.is_square()))
+	R = matrix_R;
+	if (!(R.is_square()))
 		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
 }
 
 void Solver::init_density_matrix (vector<complexd> state)
 {
-	R0.init_density_matrix(state);
+	R.init_density_matrix(state);
 }
 
 void Solver::init_time_step (double dt = DEFAULT_DT)
@@ -229,7 +235,7 @@ void Solver::init_step_num (int steps = DEFAULT_STEP_NUM)
 void Solver::init_system ()
 {
 	init_hamiltonian(DEFAULT_H_FILE);
-	init_density_matrix(DEFAULT_R0_FILE);
+	init_density_matrix(DEFAULT_R_FILE);
 	init_time_step(DEFAULT_DT);
 	init_step_num(DEFAULT_STEP_NUM);
 }
@@ -239,6 +245,8 @@ void print_header (FILE* file)
 	if (ProcessorGrid::is_root())
 		fprintf(file, "Magnitudes of diagonal elements are:\n");
 }
+
+// Main function-------------------------------------------------------------------------
 
 void Solver::solve (const char* filename)
 {
@@ -252,18 +260,17 @@ void Solver::solve (const char* filename)
 		print_header(stdout);
 
 	complexd imag_unit(0,1);
-	Matrix U = exp(H*((-imag_unit)*dT/Plank_const));
-	Matrix conj_U = ~U;
-	Matrix Rt = R0;
+	Matrix U = exp(H,(-imag_unit)*dT/Plank_const);
+	Matrix conj_U = U.herm_conj();
 
 	for (int i = 0; i < step_num; i++)
 	{
-		Rt = U*Rt;
-		Rt = Rt*conj_U;
+		R = U*R;
+		R = R*conj_U;
 		if (filename != NULL)
-			Rt.print_diagonal_abs(file);
+			R.print_diagonal_abs(file);
 		else
-			Rt.print_diagonal_abs(stdout);
+			R.print_diagonal_abs(stdout);
 	}
 	if (filename != NULL)
 		fclose(file);
@@ -273,7 +280,7 @@ ostream& operator << (ostream& out, Solver& src)
 {
 	out << "System configuration is:\n";
 	out << "Matrix H:\n" << src.get_hamiltonian() << endl;
-	out << "Matrix R0:\n" << src.get_density_matrix() << endl;
+	out << "Matrix R:\n" << src.get_density_matrix() << endl;
 	out << "dT: " << src.get_time_step() << endl;
 	out << "step number: " << src.get_step_num() << endl;
 

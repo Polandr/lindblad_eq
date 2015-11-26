@@ -9,13 +9,13 @@ int main(int argc, char** argv)
 	ProcessorGrid::default_init();
 
 	Matrix H(8,8), R0(8,8);
-	H.generate(identity_matrix);
-	R0.generate(identity_matrix);
+	H.generate(test_H);
+	R0.generate(test_R);
 
 	Solver solver;
 	solver.init_hamiltonian(H);
 	solver.init_density_matrix(R0);
-	solver.init_time_step(0.2);
+	solver.init_time_step(0.5);
 	solver.init_step_num(4);
 
 	solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
@@ -23,13 +23,24 @@ int main(int argc, char** argv)
 
 	solver.solve(NULL);
 
-	/*Matrix A(8,8);
+	vector<complexd> eigenvalues;
+	Matrix base_H = H.diagonalize(eigenvalues);
 
-	A.generate(index_indicator);
+	//cout << H;
+	//if (ProcessorGrid::is_root())
+	//	cout << endl;
 
-	cout << A << flush;
+	/*cout << base_H;
+	if (ProcessorGrid::is_root())
+		cout << endl;
 
-	cout << "A(3,4) = " << A(3,4) << endl << flush;*/
+	if (ProcessorGrid::is_root())
+	{
+		for (int i = 0; i < eigenvalues.size(); i++)
+			cout << eigenvalues[i] << endl;
+		cout << endl;
+	}*/
+
 
 	ProcessorGrid::exit();
 }

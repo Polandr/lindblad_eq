@@ -12,14 +12,15 @@
 class Solver
 {
 	Matrix H;
-	Matrix R0;
+	Matrix R;
+	vector<int> base_states;
 	double dT;
 	int step_num;
 
 public:
 
 	Matrix& get_hamiltonian () { return H; }
-	Matrix& get_density_matrix () { return R0; }
+	Matrix& get_density_matrix () { return R; }
 	double& get_time_step () { return dT; }
 	int& get_step_num () { return step_num; }
 
