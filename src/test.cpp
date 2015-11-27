@@ -6,9 +6,11 @@ using namespace std;
 int main(int argc, char** argv)
 {
 	//ProcessorGrid::square_init();
-	/*ProcessorGrid::default_init();
+	ProcessorGrid::default_init();
 
-	Matrix H(8,8), R0(8,8);
+	Solver solver;
+
+	/*Matrix H(8,8), R0(8,8);
 	H.generate(test_H);
 	R0.generate(test_R);
 
@@ -44,6 +46,8 @@ int main(int argc, char** argv)
 	Matrix exp_H = exp(H,1.0);
 	cout << exp_H;*/
 
+	// Hamiltonian constructing test---------------------------------------------------------------
+
 	vector<complexd> a(2), w(3);
 
 	a[0] = 1;
@@ -52,8 +56,6 @@ int main(int argc, char** argv)
 	w[0] = 1;
 	w[1] = 2;
 	w[2] = 3;
-
-	Solver solver;
 
 	solver.init_hamiltonian(3,0,0,3,a,w);
 

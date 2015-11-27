@@ -57,10 +57,10 @@ int combination_num(int k, int n)
 
 int unit_num(int state, int N)
 {
-	int mask = 1, out = 0;
-	for (int i = 0; i < N; i++)
+	int out = 0;
+	for (int i = 0, mask = 1; i < N; i++)
 	{
-		if (mask & i != 0)
+		if ((mask & state) != 0)
 			out++;
 		mask = mask << 1;
 	}
@@ -87,94 +87,37 @@ void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states
 	base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
 }
 
-/*int simple_transition(int state_1, int state_2, int N)
-{
-	int out = -1;
-	int state_sum = state_1 ^ state_2;
-	int prev = 0;
-	bool found = false;
-	for (int i = 0, mask = 1; i < N; i++)
-	{
-		if ((mask & state_sum) != 0)
-			if (!found)
-				if (prev == 0)
-				{
-					if ((mask & state_1) != 0)
-						prev = 1;
-					if ((mask & state_2) != 0)
-						prev = 2;
-				}
-				else
-				{
-					if (prev == 1 && ((mask & state_2) != 0))
-					{
-						prev = 0;
-						found = true;
-						out = i-1;
-					}
-					if (prev == 2 && ((mask & state_1) != 0))
-					{
-						prev = 0;
-						found = true;
-						out = i-1;
-					}
-				}
-			else
-				out = -1;
-		else
-			prev = 0;
-		mask = mask << 1;
-	}
-	return out;
-}*/
-
 int simple_transition(int state_1, int state_2, int N)
 {
 	int out = -1;
 	int state_sum = state_1 ^ state_2;
-	
-	for (int i = 0, mask = 1, weight = 0, prev = -1; i < N; i++)
-	{
-		if (weight > 2)
-		{
-			return -1;
-		}
-		if (prev != -1 && prev != i-1)
-		{
-			return -1;
-		}
-		if ((mask & state_sum) != 0)
-		{
-			weight++;
-			prev = i;
-		}
-		mask = mask << 1;
-	}
-	for (int i = 0, mask = 1, prev = -1; i < N; i++)
-	{
-		if ((mask & state_sum) != 0)
-		{
-			if (prev == -1)
-			{
-				if ((mask & state_1) != 0)
-					prev = 1;
-				if ((mask & state_2) != 0)
-					prev = 2;
-				out = i;
-			}
-			else
-			{
-				if (prev == 1 && (mask & state_1) != 0 ||
-					prev == 2 && (mask & state_2) != 0)
-				{
-					return -1;
-				}
-			}
-		}
-		mask = mask << 1;
-	}
 
-	return out;
+	if (unit_num(state_sum,N) != 2)
+		return -1;
+	
+	for (int i = 0, mask = 1; i < N; i++)
+	{
+		if ((mask & state_sum) != 0)
+		{
+			if ((mask & state_1) != 0)
+			{
+				mask = mask << 1;
+				if (((mask & state_sum) != 0) && ((mask & state_2) != 0))
+					return i;
+				else
+					return -1;
+			}
+			if ((mask & state_2) != 0)
+			{
+				mask = mask << 1;
+				if (((mask & state_sum) != 0) && ((mask & state_1) != 0))
+					return i;
+				else
+					return -1;
+			}
+		}
+		mask = mask << 1;
+	}
 }
 
 complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector<complexd> w, vector<int> states)
@@ -197,8 +140,6 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 		int pos = simple_transition(states[row],states[col],N);
 		if (pos >= 0)
 		{
-			if (ProcessorGrid::is_root())
-				cout << "Index in a " << pos << endl;
 			return a[pos];
 		}
 		else
@@ -250,24 +191,17 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 		collect_base_states(low,high,N,base_states);
 	}
 
-	/*if (ProcessorGrid::is_root())
-	{
-		cout << "Base states:\n";
-		for (int i = 0; i < base_states.size(); ++i)
-		{
-			cout << base_states[i] << endl;
-		}
-		cout << endl;
-	}*/
-
 	H.init(base_states.size(),base_states.size());
 	for (int i = 0; i < base_states.size(); i++)
 		for (int j = i; j < base_states.size(); j++)
 		{
 			complexd val = hamiltonian_element(i,j,N,a,w,base_states);
-			H.set(i,j,val);
-			if (i != j)
-				H.set(j,i,conj(val));
+			if (val != complexd(0,0))
+			{
+				H.set(i,j,val);
+				if (i != j)
+					H.set(j,i,conj(val));
+			}
 		}
 }
 
