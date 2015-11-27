@@ -87,7 +87,7 @@ void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states
 	base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
 }
 
-int simple_transition(int state_1, int state_2, int N)
+/*int simple_transition(int state_1, int state_2, int N)
 {
 	int out = -1;
 	int state_sum = state_1 ^ state_2;
@@ -95,24 +95,24 @@ int simple_transition(int state_1, int state_2, int N)
 	bool found = false;
 	for (int i = 0, mask = 1; i < N; i++)
 	{
-		if (mask & state_sum != 0)
+		if ((mask & state_sum) != 0)
 			if (!found)
 				if (prev == 0)
 				{
-					if (mask & state_1 != 0)
+					if ((mask & state_1) != 0)
 						prev = 1;
-					if (mask & state_2 != 0)
+					if ((mask & state_2) != 0)
 						prev = 2;
 				}
 				else
 				{
-					if (prev == 1 && (mask & state_2 != 0))
+					if (prev == 1 && ((mask & state_2) != 0))
 					{
 						prev = 0;
 						found = true;
 						out = i-1;
 					}
-					if (prev == 2 && (mask & state_1 != 0))
+					if (prev == 2 && ((mask & state_1) != 0))
 					{
 						prev = 0;
 						found = true;
@@ -126,6 +126,55 @@ int simple_transition(int state_1, int state_2, int N)
 		mask = mask << 1;
 	}
 	return out;
+}*/
+
+int simple_transition(int state_1, int state_2, int N)
+{
+	int out = -1;
+	int state_sum = state_1 ^ state_2;
+	
+	for (int i = 0, mask = 1, weight = 0, prev = -1; i < N; i++)
+	{
+		if (weight > 2)
+		{
+			return -1;
+		}
+		if (prev != -1 && prev != i-1)
+		{
+			return -1;
+		}
+		if ((mask & state_sum) != 0)
+		{
+			weight++;
+			prev = i;
+		}
+		mask = mask << 1;
+	}
+	for (int i = 0, mask = 1, prev = -1; i < N; i++)
+	{
+		if ((mask & state_sum) != 0)
+		{
+			if (prev == -1)
+			{
+				if ((mask & state_1) != 0)
+					prev = 1;
+				if ((mask & state_2) != 0)
+					prev = 2;
+				out = i;
+			}
+			else
+			{
+				if (prev == 1 && (mask & state_1) != 0 ||
+					prev == 2 && (mask & state_2) != 0)
+				{
+					return -1;
+				}
+			}
+		}
+		mask = mask << 1;
+	}
+
+	return out;
 }
 
 complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector<complexd> w, vector<int> states)
@@ -135,8 +184,10 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 		complexd out(0,0);
 		for (int i = 0, mask = 1; i < N; i++)
 		{
-			if (mask & states[row] != 0)
+			if ((mask & states[row]) != 0)
+			{
 				out += w[i];
+			}
 			mask = mask << 1;
 		}
 		return out;
@@ -144,10 +195,16 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 	else
 	{
 		int pos = simple_transition(states[row],states[col],N);
-		if (pos != -1)
+		if (pos >= 0)
+		{
+			if (ProcessorGrid::is_root())
+				cout << "Index in a " << pos << endl;
 			return a[pos];
+		}
 		else
+		{
 			return complexd(0,0);
+		}
 	}
 }
 
@@ -185,7 +242,6 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 	if (a.size() != N-1 || w.size() != N)
 		throw Solver_exception("incorrect parameters in hamiltonian initialization");
 	s = min(s,E_max);
-	int E_lowest = max(0,E_min-s);
 
 	for (int i = 0; i <= s; i++)
 	{
@@ -193,6 +249,16 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 		int high = max(0,E_max-s);
 		collect_base_states(low,high,N,base_states);
 	}
+
+	/*if (ProcessorGrid::is_root())
+	{
+		cout << "Base states:\n";
+		for (int i = 0; i < base_states.size(); ++i)
+		{
+			cout << base_states[i] << endl;
+		}
+		cout << endl;
+	}*/
 
 	H.init(base_states.size(),base_states.size());
 	for (int i = 0; i < base_states.size(); i++)

@@ -46,8 +46,8 @@ int main(int argc, char** argv)
 
 	vector<complexd> a(2), w(3);
 
-	a[0] = 0;
-	a[1] = 1;
+	a[0] = 1;
+	a[1] = 2;
 
 	w[0] = 1;
 	w[1] = 2;
@@ -57,7 +57,9 @@ int main(int argc, char** argv)
 
 	solver.init_hamiltonian(3,0,0,3,a,w);
 
-	solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
+	//solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
+
+	cout << solver.get_hamiltonian();
 
 	ProcessorGrid::exit();
 }
