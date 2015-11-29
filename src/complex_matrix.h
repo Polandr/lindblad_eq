@@ -41,6 +41,7 @@ public:
 	int global_n_cols () const { return info.matrix_global_cols; }
 	const Distribution& get_distribution () const { return info; }
 	const int* get_descriptor() const { return info.descriptor; }
+	const complexd get (int) const;
 	double* get_data () const;
 	void get_row (double*, int) const;
 	const complexd operator () (int, int) const;
@@ -63,8 +64,16 @@ public:
 	Matrix conj () const;
 	Matrix herm_conj () const;
 	Matrix& operator = (const Matrix&);
-	Matrix& operator *= (complexd);
-	Matrix operator * (complexd) const;
+
+	Matrix& operator *= (const complexd);
+	Matrix operator * (const complexd) const;
+
+	Matrix& operator += (const Matrix&);
+	Matrix operator + (const Matrix&) const;
+
+	Matrix& operator -= (const Matrix&);
+	Matrix operator - (const Matrix&) const;
+
 	Matrix operator * (Matrix&) const;
 	Matrix diagonalize(std::vector<complexd>&) const;
 
@@ -75,8 +84,6 @@ public:
 	void print_on_condition (std::ostream&, bool (*cond)(int, int));
 	void print_diagonal_abs(FILE*);
 	void generate (complexd (*func)(int, int));
-	void init_density_matrix(std::vector<complexd>);
-	void init_density_matrix(int,int);
 
 	void operator >> (std::ostream&);
 	void operator << (std::istream&);
@@ -87,7 +94,14 @@ public:
 std::ostream& operator << (std::ostream&, Matrix&);
 std::istream& operator >> (std::istream&, Matrix&);
 
-Matrix exp (Matrix,complexd);
+Matrix operator * (const complexd, const Matrix&);
+
+Matrix exp (Matrix&, complexd);
+Matrix commutator (Matrix&, Matrix&);
+Matrix diagonal_matrix(vector<complexd> values);
+
+Matrix density_matrix(std::vector<complexd>);
+Matrix density_matrix(int,int);
 
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"

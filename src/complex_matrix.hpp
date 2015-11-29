@@ -90,6 +90,11 @@ void Matrix::set (int i, complexd val)
 	data[i] = val;
 }
 
+const complexd Matrix::get (int i) const
+{
+	return data[i];
+}
+
 double* Matrix::get_data () const
 {
 	double* array = (double*)malloc(2*n_rows*n_cols*sizeof(double));
@@ -251,17 +256,54 @@ const complexd Matrix::operator () (int row, int col) const
 
 // Arithmetics----------------------------------------------------------------------------
 
-Matrix& Matrix::operator *= (complexd val)
+Matrix& Matrix::operator *= (const complexd val)
 {
 	for (int i = 0; i < n_rows*n_cols; i++)
 		data[i] *= val;
 	return *this;
 }
 
-Matrix Matrix::operator * (complexd val) const
+Matrix Matrix::operator * (const complexd val) const
 {
 	Matrix out(*this);
 	out *= val;
+	return out;
+}
+
+Matrix operator * (const complexd val, const Matrix& mat)
+{
+	return  mat*val;
+}
+
+Matrix& Matrix::operator += (const Matrix& A)
+{
+	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
+		throw Matrix_exception("incomatible sizes of matrices in summation");
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] += A.get(i);
+	return *this;
+}
+
+Matrix Matrix::operator + (const Matrix& A) const
+{
+	Matrix out(*this);
+	out += A;
+	return out;
+}
+
+Matrix& Matrix::operator -= (const Matrix& A)
+{
+	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
+		throw Matrix_exception("incomatible sizes of matrices in summation");
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] -= A.get(i);
+	return *this;
+}
+
+Matrix Matrix::operator - (const Matrix& A) const
+{
+	Matrix out(*this);
+	out -= A;
 	return out;
 }
 
@@ -388,7 +430,7 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	return Z;
 }
 
-Matrix exp (Matrix A, complexd c)
+Matrix exp (Matrix& A, complexd c)
 {
 	vector<complexd> eigenvalues;
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
@@ -412,4 +454,15 @@ Matrix exp (Matrix A, complexd c)
 	return Out;
 }
 
+Matrix commutator (Matrix& A, Matrix& B)
+{
+	return A*B-B*A;
+}
 
+Matrix diagonal_matrix(vector<complexd> values)
+{
+	Matrix out(values.size(),values.size());
+	for (int i = 0; i < values.size(); i++)
+		out.set(i,i,values[i]);
+	return out;
+}

@@ -43,112 +43,6 @@ class Solver_exception: public std::exception
 	}	
 };
 
-// Service functions:
-
-int combination_num(int k, int n)
-{
-	int out = 1;
-	for (int i = k+1; i <= n; i++)
-		out *= i;
-	for (int i = 1; i <= n-k; i++)
-		out /= i;
-	return out;
-}
-
-int unit_num(int state, int N)
-{
-	int out = 0;
-	for (int i = 0, mask = 1; i < N; i++)
-	{
-		if ((mask & state) != 0)
-			out++;
-		mask = mask << 1;
-	}
-	return out;
-}
-
-void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states)
-{
-	int mask = 1;
-	int full_energy_state = 0;
-	for (int i = 0; i < N; i++)
-	{
-		full_energy_state = full_energy_state | mask;
-		mask = mask << 1;
-	}
-	vector<int> cur_base_states;
-	int pow_N = pow(2,N);
-	for (int i = 0; i < pow_N; i++)
-	{
-		int E_lvl = unit_num(i,N);
-		if (E_lvl >= E_low && E_lvl <= E_high)
-			cur_base_states.push_back(i);
-	}
-	base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
-}
-
-int simple_transition(int state_1, int state_2, int N)
-{
-	int out = -1;
-	int state_sum = state_1 ^ state_2;
-
-	if (unit_num(state_sum,N) != 2)
-		return -1;
-	
-	for (int i = 0, mask = 1; i < N; i++)
-	{
-		if ((mask & state_sum) != 0)
-		{
-			if ((mask & state_1) != 0)
-			{
-				mask = mask << 1;
-				if (((mask & state_sum) != 0) && ((mask & state_2) != 0))
-					return i;
-				else
-					return -1;
-			}
-			if ((mask & state_2) != 0)
-			{
-				mask = mask << 1;
-				if (((mask & state_sum) != 0) && ((mask & state_1) != 0))
-					return i;
-				else
-					return -1;
-			}
-		}
-		mask = mask << 1;
-	}
-}
-
-complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector<complexd> w, vector<int> states)
-{
-	if (row == col)
-	{
-		complexd out(0,0);
-		for (int i = 0, mask = 1; i < N; i++)
-		{
-			if ((mask & states[row]) != 0)
-			{
-				out += w[i];
-			}
-			mask = mask << 1;
-		}
-		return out;
-	}
-	else
-	{
-		int pos = simple_transition(states[row],states[col],N);
-		if (pos >= 0)
-		{
-			return a[pos];
-		}
-		else
-		{
-			return complexd(0,0);
-		}
-	}
-}
-
 // Solver functions realization------------------------------------------------------------
 
 // Hamiltonian initialization:
@@ -182,27 +76,7 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 {
 	if (a.size() != N-1 || w.size() != N)
 		throw Solver_exception("incorrect parameters in hamiltonian initialization");
-	s = min(s,E_max);
-
-	for (int i = 0; i <= s; i++)
-	{
-		int low = max(0,E_min-s);
-		int high = max(0,E_max-s);
-		collect_base_states(low,high,N,base_states);
-	}
-
-	H.init(base_states.size(),base_states.size());
-	for (int i = 0; i < base_states.size(); i++)
-		for (int j = i; j < base_states.size(); j++)
-		{
-			complexd val = hamiltonian_element(i,j,N,a,w,base_states);
-			if (val != complexd(0,0))
-			{
-				H.set(i,j,val);
-				if (i != j)
-					H.set(j,i,conj(val));
-			}
-		}
+	H = hamiltonian(N, s, E_min, E_max, a, w, base_states);
 }
 
 // Initial density matrix initialization:
@@ -223,7 +97,15 @@ void Solver::init_density_matrix (const Matrix& matrix_R)
 
 void Solver::init_density_matrix (vector<complexd> state)
 {
-	R.init_density_matrix(state);
+	R = density_matrix(state);
+}
+
+// Other parameters initialization:
+
+void Solver::init_lindblad (complexd out, std::vector<complexd> ls, std::vector<complexd> Ls)
+{
+	L.active = true;
+	L.init(out, ls, Ls);
 }
 
 void Solver::init_time_step (double dt = DEFAULT_DT)
@@ -269,8 +151,13 @@ void Solver::solve (const char* filename)
 
 	for (int i = 0; i < step_num; i++)
 	{
+		Matrix dL;
+		if (L.active)
+			dL = dT*L(R,base_states);
 		R = U*R;
 		R = R*conj_U;
+		if (L.active)
+			R += dL;
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
 		else
