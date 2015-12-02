@@ -24,16 +24,15 @@ Matrix density_matrix(int N, int i);
 
 class Lindblad_part
 {
-	complexd stock;
+	int stock;
 	std::vector<complexd> ls;
-	std::vector<complexd> Ls;
 
 public:
 
 	bool active;
 
 	Lindblad_part() { active = false; }
-	void init (complexd, std::vector<complexd>, std::vector<complexd>);
+	void init (int, std::vector<complexd>);
 
 	Matrix operator () (Matrix&, vector<int>);
 };
@@ -205,20 +204,95 @@ Matrix density_matrix(int N, int i)
 	return density_matrix(state);
 }
 
+int makeMask(int i)
+{
+	int x = i-1;
+	int digit = pow(2,x);
+	return digit;
+}
+
+Matrix createStockMatrix()
+{
+	;
+}
+
+Matrix createDiffaseMatrix(int i, vector<int> base_states)
+{
+	Matrix diffaseMatr(base_states.size(),base_states.size());
+	i++;
+	int mask = makeMask(i);
+
+	for (int j=0; j<base_states.size(); j++)
+	{
+		if ((mask & base_states[j]) == mask)
+			diffaseMatr.set(j,j,1);
+	}
+	return diffaseMatr;
+}
+
 // Lindblad part:--------------------------------------------------------------------------------------------------------
 
-void Lindblad_part::init (complexd out, std::vector<complexd> v1, std::vector<complexd> v2)
+void Lindblad_part::init (int out, std::vector<complexd> v1)
 {
+
 	stock = out;
 	for (int i = 0; i < v1.size(); ++i)
 		ls.push_back(v1[i]);
-	for (int i = 0; i < v2.size(); ++i)
-		Ls.push_back(v2[i]);
 }
 
 Matrix Lindblad_part::operator () (Matrix& R, vector<int> base_states)
 {
-	;
+	vector<Matrix> Li;
+	Matrix Out(base_states.size(),base_states.size());
+	Matrix Out2, Out3, Li_conj, Li_conj_Li;
+	complexd imag_unit(0,1.0);
+	int N = ls.size();
+
+//zero step - stock
+if (stock != 0)
+{
+	Li.push_back(createStockMatrix());
+	Li_conj = ~Li[0];
+	Li_conj_Li = Li_conj*Li[0];
+
+	Out = Li[0]*R;
+
+	Out = Out*Li_conj;
+
+	Out2 = Li_conj_Li*R;
+	Out3 = R*Li_conj_Li;
+
+	Out2 += Out3;
+	Out2 = Out2*(1/2);
+
+	Out -= Out2;
+	Out = Out*stock;
+}
+// end stock
+
+	for (int i=0; i<N; i++)
+	{
+		Li.push_back(createDiffaseMatrix(i, base_states));
+		Li_conj = ~Li[i];
+		Li_conj_Li = Li_conj*Li[i];
+		
+		Out += Li[i]*R;
+
+		Out = Out*Li_conj;
+
+		Out2 = Li_conj_Li*R;
+		Out3 = R*Li_conj_Li;
+
+		Out2 += Out3;
+		Out2 = Out2 *(1/2);
+
+		Out -= Out2;
+		Out = Out*ls[i];
+	}
+	
+	Out = Out*imag_unit;
+
+	return Out;
 }
 
 #endif

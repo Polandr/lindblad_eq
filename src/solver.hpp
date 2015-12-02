@@ -53,6 +53,7 @@ void Solver::init_hamiltonian (const char* filename = DEFAULT_H_FILE)
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
+		
 }
 
 void Solver::init_hamiltonian (const Matrix& matrix_H)
@@ -100,10 +101,10 @@ void Solver::init_density_matrix (vector<complexd> state)
 
 // Other parameters initialization:
 
-void Solver::init_lindblad (complexd out, std::vector<complexd> ls, std::vector<complexd> Ls)
+void Solver::init_lindblad (int out, std::vector<complexd> ls)
 {
 	L.active = true;
-	L.init(out, ls, Ls);
+	L.init(out, ls);
 }
 
 void Solver::init_time_step (double dt = DEFAULT_DT)
@@ -143,34 +144,25 @@ void Solver::solve (const char* filename)
 	else
 		print_header(stdout);
 
-<<<<<<< HEAD
-	Matrix U = exp(H, dT); 
-	Matrix U_c = ~U;
-	Matrix Rt = R0;
-
-	for (int i = 0; i < step_num; i++)
-	{
-		Rt = U_c*Rt; 
-		Rt = Rt*U; 
-=======
 	complexd imag_unit(0,1);
 	Matrix U = exp(H,(-imag_unit)*dT/Plank_const);
 	Matrix conj_U = U.herm_conj();
 
 	for (int i = 0; i < step_num; i++)
 	{
-		Matrix dL;
-		if (L.active)
-			dL = dT*L(R,base_states);
 		R = U*R;
 		R = R*conj_U;
+
 		if (L.active)
+		{
+			Matrix dL = dT*L(R,base_states);
 			R += dL;
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
+		}
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
 		else
 			R.print_diagonal_abs(stdout);
+
 	}
 	if (filename != NULL)
 		fclose(file);

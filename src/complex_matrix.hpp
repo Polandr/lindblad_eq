@@ -271,17 +271,6 @@ Matrix Matrix::operator * (const complexd val) const
 	return out;
 }
 
-<<<<<<< HEAD
-Matrix& Matrix::diagMul (complexd val)
-{
-	for (int i = 0; i < n_rows; i++)
-		for (int j =0; j< n_cols; j++)
-			if (i==j)
-				data[i*n_cols+j] *= val;
-	return *this;
-}
-
-=======
 Matrix operator * (const complexd val, const Matrix& mat)
 {
 	return  mat*val;
@@ -319,7 +308,7 @@ Matrix Matrix::operator - (const Matrix& A) const
 	return out;
 }
 
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
+
 Matrix Matrix::operator * (Matrix& b) const
 {
 	Matrix c_matr(global_n_rows(), b.global_n_cols());
@@ -417,14 +406,25 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	int col_offset = 1;
 
 	int lrwork = 2*n + 2*n-2;
-	int lwork = 10000;
-<<<<<<< HEAD
-	double *work = (double*)malloc(lwork*sizeof(double));
-=======
-	double* work = (double*)malloc(lwork*sizeof(double));
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
+	int lwork = -1;
+
+	double* work = (double*)malloc(2*sizeof(double));
 	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
+
+	pzheev_((char*) "V", (char*) "L", &n, 
+		a, &row_offset, &col_offset, distrA.descriptor, 
+		w, 
+		z, &row_offset, &col_offset, distrZ.descriptor, 
+		work, &lwork, rwork, &lrwork, &ret_info);
+
+	lwork = work[0];
+
+	free(work);
+	free(rwork);
+
+	work = (double*)malloc(lwork*2*sizeof(double));
+	rwork  = (double*)malloc(lrwork*sizeof(double));
 
 	pzheev_((char*) "V", (char*) "L", &n, 
 		a, &row_offset, &col_offset, distrA.descriptor, 
@@ -442,62 +442,34 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 
 	Z.set_data(z);
 
-<<<<<<< HEAD
-	Z.in_place_transposition();
-=======
 	Z = ~Z;
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
 
 	return Z;
 }
 
-<<<<<<< HEAD
-
-Matrix exp (Matrix A, double dT)
-=======
 Matrix exp (Matrix& A, complexd c)
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
+
 {
 	vector<complexd> eigenvalues;
-	complexd imag_unit(0,1);
-
-	complexd koeff = -imag_unit*dT/Plank_const; 
 
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
 	Matrix U(A.global_n_rows(), A.global_n_cols());
 	Matrix U_c(A.global_n_cols(), A.global_n_rows());
-	Matrix D(A.global_n_rows(), A.global_n_cols());
-<<<<<<< HEAD
-	Distribution distr = D.get_distribution(); 
+	Matrix D(A.global_n_rows(), A.global_n_cols()); 
 
-	U = A.diagonalize(eigenvalues);
-	U_c = ~U;  
-=======
 	Distribution distr = D.get_distribution();
 
 	U = A.diagonalize(eigenvalues);
 	U_c = U.herm_conj();
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
 
 	for (int i=distr.row_offset()+D.n_rows; i>=distr.row_offset(); i--)
 		for (int j=distr.col_offset()+D.n_cols; j>=distr.col_offset(); j--)
 			if (i==j)
-<<<<<<< HEAD
-			{
-				D.set(i,j,exp(eigenvalues[i])*koeff);
-			}
+				D.set(i,j,exp(eigenvalues[i]*c));
 
 	Out = U_c * D; 
 	Out = Out * U;
-
-=======
-				//D(i,j) = exp(eigenvalues[i]);
-				D.set(i,j,exp(eigenvalues[i]*c));
-
-	Out = U_c * D;
-	Out = Out * U;
-	
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
+			
 	return Out;
 }
 

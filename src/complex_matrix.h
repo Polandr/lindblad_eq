@@ -64,14 +64,9 @@ public:
 	Matrix conj () const;
 	Matrix herm_conj () const;
 	Matrix& operator = (const Matrix&);
-<<<<<<< HEAD
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
-	Matrix& diagMul (complexd);
-=======
 
-	Matrix& operator *= (const complexd);
-	Matrix operator * (const complexd) const;
 
 	Matrix& operator += (const Matrix&);
 	Matrix operator + (const Matrix&) const;
@@ -79,7 +74,6 @@ public:
 	Matrix& operator -= (const Matrix&);
 	Matrix operator - (const Matrix&) const;
 
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
 	Matrix operator * (Matrix&) const;
 	Matrix diagonalize(std::vector<complexd>&) const;
 
@@ -100,9 +94,7 @@ public:
 std::ostream& operator << (std::ostream&, Matrix&);
 std::istream& operator >> (std::istream&, Matrix&);
 
-<<<<<<< HEAD
 Matrix exp (Matrix, double);
-=======
 Matrix operator * (const complexd, const Matrix&);
 
 Matrix exp (Matrix&, complexd);
@@ -111,7 +103,6 @@ Matrix diagonal_matrix(vector<complexd> values);
 
 Matrix density_matrix(std::vector<complexd>);
 Matrix density_matrix(int,int);
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
 
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"

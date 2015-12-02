@@ -293,11 +293,7 @@ void write_elems(FILE* file, double* buf, int count)
 {
 	for (int i = 0; i < count; i++)
 	{
-<<<<<<< HEAD
 		fprintf(file, "(%.3f,%.3f)", buf[2*i], buf[2*i+1]);
-=======
-		fprintf(file, "(%.4f,%.4f)", buf[2*i], buf[2*i+1]);
->>>>>>> 3cee25457b2161fc6e3608b22938163077142391
 		if (i != count-1)
 			fprintf(file, " ");
 	}
