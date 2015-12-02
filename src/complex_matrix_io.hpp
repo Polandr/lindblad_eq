@@ -77,7 +77,7 @@ void write_elems(ostream& out, double* buf, int count)
 {
 	for (int i = 0; i < count; i++)
 	{
-		out << setprecision(2) << 
+		out << /*setprecision(2) << */
 		'(' << buf[2*i] << ',' << buf[2*i+1] << ')';
 		if (i != count-1)
 			out << ' ';
@@ -293,7 +293,11 @@ void write_elems(FILE* file, double* buf, int count)
 {
 	for (int i = 0; i < count; i++)
 	{
+<<<<<<< HEAD
 		fprintf(file, "(%.3f,%.3f)", buf[2*i], buf[2*i+1]);
+=======
+		fprintf(file, "(%.4f,%.4f)", buf[2*i], buf[2*i+1]);
+>>>>>>> 3cee25457b2161fc6e3608b22938163077142391
 		if (i != count-1)
 			fprintf(file, " ");
 	}
@@ -548,7 +552,7 @@ void Matrix::print_diagonal_abs(FILE* file)
 {
 	int min_dim = (global_n_rows() < global_n_cols())? global_n_rows() : global_n_cols();
 	int* local_proc_info = gather_info();
-	//cout << "I'm here <" << ProcessorGrid::my_proc << ">\n";
+
 	for (int i = 0; i < min_dim; i++)
 		if (ProcessorGrid::is_root())
 		{
@@ -594,6 +598,11 @@ double normalized_rand()
 	return static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 }
 
+complexd c_normalized_rand()
+{
+	return complexd(normalized_rand(),normalized_rand());
+}
+
 complexd identity_matrix(int i, int j)
 {
 	return (i == j)? 1 : 0;
@@ -612,11 +621,7 @@ complexd zero_matrix(int i, int j)
 complexd random_lower_triangle(int i, int j)
 {
 	if (i >= j)
-	{
-		double re = normalized_rand();
-		double im = normalized_rand();
-		return complexd(re,im);
-	}
+		return c_normalized_rand();
 	else
 		return 0;
 }
@@ -626,22 +631,18 @@ complexd index_indicator(int i, int j)
 	return complexd(i,j);
 }
 
-// Special initializers
-
-void Matrix::init_density_matrix(vector<complexd> state)
+complexd test_H(int i, int j)
 {
-	init(state.size(),state.size());
-	for (int i = 0; i < global_n_rows(); i++)
-		for (int j = 0; j < global_n_cols(); j++)
-			if (in_block(i,j))
-				data[(i - info.row_offset()) + n_rows * (j - info.col_offset())] = state[i]*conj(state[j]);
+	if (i == 0 && j == 1)
+		return 1;
+	if (i == 1 && j == 0)
+		return 1;
+	if (i == j)
+		return 1;
+	return 0;
 }
 
-void Matrix::init_density_matrix(int N, int i)
+complexd test_R(int i, int j)
 {
-	if (i >= N)
-		throw  Matrix_exception("invalid density matrix initialization");
-	vector<complexd> state(N,0);
-	state[i] = 1;
-	init_density_matrix(state);
+	return (i == 0 && j == 0)? 1 : 0;
 }
