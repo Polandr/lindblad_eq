@@ -492,7 +492,7 @@ Matrix exp (Matrix& A, complexd c)
 
 =======
 				//D(i,j) = exp(eigenvalues[i]);
-				D.set(i,j,exp(eigenvalues[i])*c);
+				D.set(i,j,exp(eigenvalues[i]*c));
 
 	Out = U_c * D;
 	Out = Out * U;
