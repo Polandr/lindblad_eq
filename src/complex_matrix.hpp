@@ -91,6 +91,11 @@ void Matrix::set (int i, complexd val)
 	data[i] = val;
 }
 
+const complexd Matrix::get (int i) const
+{
+	return data[i];
+}
+
 double* Matrix::get_data () const
 {
 	double* array = (double*)malloc(2*n_rows*n_cols*sizeof(double));
@@ -145,7 +150,7 @@ Matrix::Matrix ()
 Matrix::Matrix (int rows, int cols,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
-	if (rows <= 0 || cols <= 0)
+	if (rows < 0 || cols < 0)
 		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
@@ -159,7 +164,7 @@ void Matrix::init (int rows, int cols,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
 	this->~Matrix();
-	if (rows <= 0 || cols <= 0)
+	if (rows < 0 || cols < 0)
 		throw Matrix_exception("invalid matrix size");
 	init_distribution(rows,cols,row_block,col_block);
 	n_rows = info.local_row_num();
@@ -252,28 +257,57 @@ const complexd Matrix::operator () (int row, int col) const
 
 // Arithmetics----------------------------------------------------------------------------
 
-Matrix& Matrix::operator *= (complexd val)
+Matrix& Matrix::operator *= (const complexd val)
 {
 	for (int i = 0; i < n_rows*n_cols; i++)
 		data[i] *= val;
 	return *this;
 }
 
-Matrix Matrix::operator * (complexd val) const
+Matrix Matrix::operator * (const complexd val) const
 {
 	Matrix out(*this);
 	out *= val;
 	return out;
 }
 
-Matrix& Matrix::diagMul (complexd val)
+Matrix operator * (const complexd val, const Matrix& mat)
 {
-	for (int i = 0; i < n_rows; i++)
-		for (int j =0; j< n_cols; j++)
-			if (i==j)
-				data[i*n_cols+j] *= val;
+	return  mat*val;
+}
+
+Matrix& Matrix::operator += (const Matrix& A)
+{
+	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
+		throw Matrix_exception("incomatible sizes of matrices in summation");
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] += A.get(i);
 	return *this;
 }
+
+Matrix Matrix::operator + (const Matrix& A) const
+{
+	Matrix out(*this);
+	out += A;
+	return out;
+}
+
+Matrix& Matrix::operator -= (const Matrix& A)
+{
+	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
+		throw Matrix_exception("incomatible sizes of matrices in summation");
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] -= A.get(i);
+	return *this;
+}
+
+Matrix Matrix::operator - (const Matrix& A) const
+{
+	Matrix out(*this);
+	out -= A;
+	return out;
+}
+
 
 Matrix Matrix::operator * (Matrix& b) const
 {
@@ -327,7 +361,7 @@ Matrix Matrix::operator ~ () const
 	double beta[2];
 	alpha[0] = 1.0;
 	alpha[1] = 0.0;
-	beta[0] = 1.0; 
+	beta[0] = 0.0; 
 	beta[1] = 0.0;
 
 	double* a_data = get_data();
@@ -340,6 +374,20 @@ Matrix Matrix::operator ~ () const
 	c_matr.set_data(c_data);
 
 	return c_matr;
+}
+
+Matrix Matrix::conj () const
+{
+	Matrix out(*this);
+	for (int i = 0; i < n_rows*n_cols; i++)
+		out.set(i,std::conj(data[i]));
+	return out;
+}
+
+Matrix Matrix::herm_conj () const
+{
+	Matrix out = this->conj();
+	return ~out;
 }
 
 Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
@@ -358,8 +406,9 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 	int col_offset = 1;
 
 	int lrwork = 2*n + 2*n-2;
-	int lwork = 10000;
-	double *work = (double*)malloc(lwork*sizeof(double));
+	int lwork = -1;
+
+	double* work = (double*)malloc(2*sizeof(double));
 	double* rwork  = (double*)malloc(lrwork*sizeof(double));
 	int ret_info;
 
@@ -369,6 +418,23 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 		z, &row_offset, &col_offset, distrZ.descriptor, 
 		work, &lwork, rwork, &lrwork, &ret_info);
 
+	lwork = work[0];
+
+	free(work);
+	free(rwork);
+
+	work = (double*)malloc(lwork*2*sizeof(double));
+	rwork  = (double*)malloc(lrwork*sizeof(double));
+
+	pzheev_((char*) "V", (char*) "L", &n, 
+		a, &row_offset, &col_offset, distrA.descriptor, 
+		w, 
+		z, &row_offset, &col_offset, distrZ.descriptor, 
+		work, &lwork, rwork, &lrwork, &ret_info);
+
+	free(work);
+	free(rwork);
+
 	for (int i=0; i<global_n_rows(); i++)
 	{
 		eigenvalues.push_back(w[i]);
@@ -376,39 +442,46 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 
 	Z.set_data(z);
 
-	Z.in_place_transposition();
+	Z = ~Z;
 
 	return Z;
 }
 
+Matrix exp (Matrix& A, complexd c)
 
-Matrix exp (Matrix A, double dT)
 {
 	vector<complexd> eigenvalues;
-	complexd imag_unit(0,1);
-
-	complexd koeff = -imag_unit*dT/Plank_const; 
 
 	Matrix Out(A.global_n_rows(), A.global_n_cols());
 	Matrix U(A.global_n_rows(), A.global_n_cols());
 	Matrix U_c(A.global_n_cols(), A.global_n_rows());
-	Matrix D(A.global_n_rows(), A.global_n_cols());
-	Distribution distr = D.get_distribution(); 
+	Matrix D(A.global_n_rows(), A.global_n_cols()); 
+
+	Distribution distr = D.get_distribution();
 
 	U = A.diagonalize(eigenvalues);
-	U_c = ~U;  
+	U_c = U.herm_conj();
 
 	for (int i=distr.row_offset()+D.n_rows; i>=distr.row_offset(); i--)
 		for (int j=distr.col_offset()+D.n_cols; j>=distr.col_offset(); j--)
 			if (i==j)
-			{
-				D.set(i,j,exp(eigenvalues[i])*koeff);
-			}
+				D.set(i,j,exp(eigenvalues[i]*c));
 
 	Out = U_c * D; 
 	Out = Out * U;
-
+			
 	return Out;
 }
 
+Matrix commutator (Matrix& A, Matrix& B)
+{
+	return A*B-B*A;
+}
 
+Matrix diagonal_matrix(vector<complexd> values)
+{
+	Matrix out(values.size(),values.size());
+	for (int i = 0; i < values.size(); i++)
+		out.set(i,i,values[i]);
+	return out;
+}

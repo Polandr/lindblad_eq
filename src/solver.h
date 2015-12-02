@@ -6,20 +6,24 @@
 #include <utility>
 #include <fstream>
 #include <vector>
+
 #include "complex_matrix.h"
+#include "quantum_system.h"
 
 
 class Solver
 {
 	Matrix H;
-	Matrix R0;
+	Matrix R;
+	std::vector<int> base_states;
+	Lindblad_part L;
 	double dT;
 	int step_num;
 
 public:
 
 	Matrix& get_hamiltonian () { return H; }
-	Matrix& get_density_matrix () { return R0; }
+	Matrix& get_density_matrix () { return R; }
 	double& get_time_step () { return dT; }
 	int& get_step_num () { return step_num; }
 
@@ -31,8 +35,12 @@ public:
 	void init_density_matrix (const Matrix&);
 	void init_density_matrix (vector<complexd>);
 
+	void init_lindblad (int, std::vector<complexd>);
+
 	void init_time_step (double);
+
 	void init_step_num (int);
+
 	void init_system ();
 
 	void solve (const char*);

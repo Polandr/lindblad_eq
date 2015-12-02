@@ -55,7 +55,7 @@ void ProcessorGrid::init (int proc_rows = PRC_R, int proc_cols = PRC_C,
 	Cblacs_gridinfo(context,&proc_row_num,&proc_col_num,&my_proc_row,&my_proc_col);
 
 	if (my_proc == rt)
-		printf("Grid initialized!\n");
+		cout << "Grid initialized!\n" << flush;
 
 	initialized = true;
 }
@@ -90,6 +90,8 @@ void ProcessorGrid::exit()
 {
 	Cblacs_gridexit(context);
 	Cblacs_exit(0);
+	if (is_root())
+		cout << "Grid finalized!\n" << flush;
 }
 
 // Distribution struct:
