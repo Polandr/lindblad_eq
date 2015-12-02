@@ -446,7 +446,7 @@ Matrix exp (Matrix& A, complexd c)
 		for (int j=distr.col_offset(); j<distr.col_offset()+D.n_cols; j++)
 			if (i==j)
 				//D(i,j) = exp(eigenvalues[i]);
-				D.set(i,j,exp(eigenvalues[i])*c);
+				D.set(i,j,exp(eigenvalues[i]*c));
 
 	Out = U_c * D;
 	Out = Out * U;
