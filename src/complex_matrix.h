@@ -101,9 +101,6 @@ Matrix exp (Matrix&, complexd);
 Matrix commutator (Matrix&, Matrix&);
 Matrix diagonal_matrix(vector<complexd> values);
 
-Matrix density_matrix(std::vector<complexd>);
-Matrix density_matrix(int,int);
-
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"
 

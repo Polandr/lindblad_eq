@@ -154,10 +154,8 @@ void Solver::solve (const char* filename)
 		R = R*conj_U;
 
 		if (L.active)
-		{
-			Matrix dL = dT*L(R,base_states);
-			R += dL;
-		}
+			R += dT*L(R,base_states);
+		
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
 		else

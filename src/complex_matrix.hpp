@@ -448,7 +448,6 @@ Matrix Matrix::diagonalize (vector<complexd>& eigenvalues) const
 }
 
 Matrix exp (Matrix& A, complexd c)
-
 {
 	vector<complexd> eigenvalues;
 

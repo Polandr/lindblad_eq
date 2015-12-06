@@ -147,6 +147,34 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 	}
 }
 
+// For Lindblad:
+
+int makeMask(int i)
+{
+	int x = i-1;
+	int digit = pow(2,x);
+	return digit;
+}
+
+Matrix createStockMatrix()
+{
+	;
+}
+
+Matrix createDiffaseMatrix(int i, vector<int> base_states)
+{
+	Matrix diffaseMatr(base_states.size(),base_states.size());
+	i++;
+	int mask = makeMask(i);
+
+	for (int j=0; j<base_states.size(); j++)
+	{
+		if ((mask & base_states[j]) == mask)
+			diffaseMatr.set(j,j,1);
+	}
+	return diffaseMatr;
+}
+
 // Hamiltonian constructing:---------------------------------------------------------------------------------------------
 
 Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w, vector<int>& base_states)
@@ -202,32 +230,6 @@ Matrix density_matrix(int N, int i)
 	vector<complexd> state(N,0);
 	state[i] = 1;
 	return density_matrix(state);
-}
-
-int makeMask(int i)
-{
-	int x = i-1;
-	int digit = pow(2,x);
-	return digit;
-}
-
-Matrix createStockMatrix()
-{
-	;
-}
-
-Matrix createDiffaseMatrix(int i, vector<int> base_states)
-{
-	Matrix diffaseMatr(base_states.size(),base_states.size());
-	i++;
-	int mask = makeMask(i);
-
-	for (int j=0; j<base_states.size(); j++)
-	{
-		if ((mask & base_states[j]) == mask)
-			diffaseMatr.set(j,j,1);
-	}
-	return diffaseMatr;
 }
 
 // Lindblad part:--------------------------------------------------------------------------------------------------------
