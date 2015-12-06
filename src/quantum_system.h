@@ -53,6 +53,20 @@ int combination_num(int k, int n)
 	return out;
 }
 
+void print_ketbra(int state, int N)
+{
+	printf("|");
+	for (int i = 0, mask = 1 << N; i < N; i++)
+	{
+		mask = mask >> 1;
+		if ((mask & state) != 0)
+			printf("1");
+		else
+			printf("0");			
+	}
+	printf(">");
+}
+
 int unit_num(int state, int N)
 {
 	int out = 0;
@@ -65,15 +79,8 @@ int unit_num(int state, int N)
 	return out;
 }
 
-void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states)
+vector<int> collect_base_states (int E_low, int E_high, int N)
 {
-	int mask = 1;
-	int full_energy_state = 0;
-	for (int i = 0; i < N; i++)
-	{
-		full_energy_state = full_energy_state | mask;
-		mask = mask << 1;
-	}
 	vector<int> cur_base_states;
 	int pow_N = pow(2,N);
 	for (int i = 0; i < pow_N; i++)
@@ -82,7 +89,8 @@ void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states
 		if (E_lvl >= E_low && E_lvl <= E_high)
 			cur_base_states.push_back(i);
 	}
-	base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
+
+	return cur_base_states;
 }
 
 int simple_transition(int state_1, int state_2, int N)
@@ -177,7 +185,8 @@ Matrix createDiffaseMatrix(int i, vector<int> base_states)
 
 // Hamiltonian constructing:---------------------------------------------------------------------------------------------
 
-Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w, vector<int>& base_states)
+Matrix hamiltonian (int N, int s, int E_min, int E_max, 
+	vector<complexd> a, vector<complexd> w, vector<int>& base_states, vector<int>& state_nums)
 // N - dimension of system
 // s - maximum stock level
 // E_min, E_max - minimum and maximum energy levels
@@ -191,23 +200,30 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vect
 
 	for (int i = 0; i <= s; i++)
 	{
-		int low = max(0,E_min-s);
-		int high = max(0,E_max-s);
-		collect_base_states(low,high,N,base_states);
+		int low = max(0,E_min-i);
+		int high = max(0,E_max-i);
+		vector<int> cur_base_states = collect_base_states(low,high,N);
+		state_nums.push_back(cur_base_states.size());
+		base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
 	}
 
 	H.init(base_states.size(),base_states.size());
-	for (int i = 0; i < base_states.size(); i++)
-		for (int j = i; j < base_states.size(); j++)
-		{
-			complexd val = hamiltonian_element(i,j,N,a,w,base_states);
-			if (val != complexd(0,0))
+
+	for (int block_num = 0, ofs = 0; block_num < state_nums.size(); block_num++)
+	{
+		for (int i = ofs; i < ofs + state_nums[block_num]; i++)
+			for (int j = i; j < ofs + state_nums[block_num]; j++)
 			{
-				H.set(i,j,val);
-				if (i != j)
-					H.set(j,i,conj(val));
+				complexd val = hamiltonian_element(i,j,N,a,w,base_states);
+				if (val != complexd(0,0))
+				{
+					H.set(i,j,val);
+					if (i != j)
+						H.set(j,i,conj(val));
+				}
 			}
-		}
+		ofs += state_nums[block_num];
+	}
 
 	return H;	
 }

@@ -53,7 +53,7 @@ void Solver::init_hamiltonian (const char* filename = DEFAULT_H_FILE)
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
-		
+	state_nums.push_back(base_states.size());
 }
 
 void Solver::init_hamiltonian (const Matrix& matrix_H)
@@ -64,6 +64,7 @@ void Solver::init_hamiltonian (const Matrix& matrix_H)
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
+	state_nums.push_back(base_states.size());
 }
 
 void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w)
@@ -75,7 +76,7 @@ void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<comple
 {
 	if (a.size() != N-1 || w.size() != N)
 		throw Solver_exception("incorrect parameters in hamiltonian initialization");
-	H = hamiltonian(N, s, E_min, E_max, a, w, base_states);
+	H = hamiltonian(N, s, E_min, E_max, a, w, base_states, state_nums);
 }
 
 // Initial density matrix initialization:
@@ -125,6 +126,19 @@ void Solver::init_system ()
 	init_step_num(DEFAULT_STEP_NUM);
 }
 
+// Some service:
+
+void Solver::print_base_states()
+{
+	for (int i = 0, ofs = 0; i < state_nums.size(); ++i)
+	{
+		printf("Stock is %d:\n", i);
+		for (int j = 0; j < state_nums[i]; ++j, ++ofs)
+			print_ketbra(base_states[ofs], N);
+		printf("\n");
+	}
+}
+
 void print_header (FILE* file)
 {
 	if (ProcessorGrid::is_root())
@@ -155,7 +169,7 @@ void Solver::solve (const char* filename)
 
 		if (L.active)
 			R += dT*L(R,base_states);
-		
+
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
 		else
