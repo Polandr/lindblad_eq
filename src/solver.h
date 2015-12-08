@@ -41,7 +41,7 @@ public:
 	void init_density_matrix (const Matrix&);
 	void init_density_matrix (vector<complexd>);
 
-	void init_lindblad (int, std::vector<complexd>);
+	void init_lindblad (complexd, std::vector<complexd>);
 	void init_time_step (double);
 	void init_step_num (int);
 

@@ -19,56 +19,41 @@ int main(int argc, char** argv)
 {
 	ProcessorGrid::default_init();
 
-	Matrix H(8,8), R0(8,8);
+	Matrix H(4,4), R0(8,8);
+	H.generate(identity_matrix);
+	R0.generate(identity_matrix);
 
-	//Lindblad_part lindblad;
-	//std::vector<complexd> di;
-	//complexd a(1.0,0);
-	//complexd a1(3.0,0);
-	//di.push_back(a);
-	//di.push_back(a1);
-	//lindblad.init(0,di);
+	Lindblad_part lindblad;
+	std::vector<complexd> di;
+	di.push_back(0);
+	di.push_back(0);
+	//lindblad.init(1,di);
+
+
 
 	//H.generate(test_H);
 	//R0.generate(test_R);
 
 	Solver solver;
 
-	/*solver.init_hamiltonian(H);
+	//solver.init_hamiltonian(H);
+	vector<complexd> a(1), w(2);
+	a[0] = 1;
+	w[0] = 2; w[1] = 3;
+	solver.init_hamiltonian(2,2,0,2,a,w);
 	solver.init_density_matrix(R0);
 
 	solver.init_time_step(0.2);
 	solver.init_step_num(1);
 
-	solver.init_lindblad(0,di);
+	solver.init_lindblad(1,di);
 
 	solver.solve(NULL);
 
 
-	vector<complexd> eigenvalues;
-	Matrix base_H = H.diagonalize(eigenvalues);
-
-	cout << H;
-	if (ProcessorGrid::is_root())
-		cout << endl;
-
-	cout << base_H;
-	if (ProcessorGrid::is_root())
-		cout << endl;
-
-	if (ProcessorGrid::is_root())
-	{
-		for (int i = 0; i < eigenvalues.size(); i++)
-			cout << eigenvalues[i] << endl;
-		cout << endl;
-	}
-
-	Matrix exp_H = exp(H,1.0);
-	cout << exp_H;*/
-
 	// Hamiltonian constructing test---------------------------------------------------------------
 
-	vector<complexd> a(1), w(2);
+	/*vector<complexd> a(1), w(2);
 
 	a[0] = 1;
 
@@ -79,7 +64,7 @@ int main(int argc, char** argv)
 
 	//solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
 
-	cout << solver.get_hamiltonian();
+	cout << solver.get_hamiltonian();*/
 
 	ProcessorGrid::exit();
 }

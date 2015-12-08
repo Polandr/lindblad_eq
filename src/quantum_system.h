@@ -24,17 +24,21 @@ Matrix density_matrix(int N, int i);
 
 class Lindblad_part
 {
-	int stock;
-	std::vector<complexd> ls;
+	complexd stock;
+	std::vector<complexd> l;
+
+	Matrix L0;
+	vector<complexd> Li;
+	vector<int> ofs;
 
 public:
 
 	bool active;
 
 	Lindblad_part() { active = false; }
-	void init (int, std::vector<complexd>);
+	void init (complexd, std::vector<complexd>);
 
-	Matrix operator () (Matrix&, vector<int>);
+	Matrix operator () (Matrix&, vector<int>, vector<int>);
 };
 
 // Implementation:-------------------------------------------------------------------------------------------------------
@@ -164,9 +168,51 @@ int makeMask(int i)
 	return digit;
 }
 
-Matrix createStockMatrix()
+int getPrevState(int state, bool& found)
 {
-	;
+	if ((state & 1) == 0)
+	{
+		found = true;
+		return (state | 1);
+	}
+	else
+	{
+		found = false;
+		return -1;
+	}
+}
+
+Matrix createStockMatrix(vector<int> base_states, vector<int> state_nums)
+{
+	Matrix stockMatrix(base_states.size(),base_states.size());
+
+	if (state_nums.size() == 1)
+		return stockMatrix;
+
+	int ofs = state_nums[0];
+	for (int i = 1; i < state_nums.size(); ++i)
+	{
+		for (int row = ofs; row < ofs + state_nums[i]; ++row)
+		{
+			bool found;
+			int prevState = getPrevState(base_states[row], found);
+			if (found)
+			{
+				int col = -1;
+				for (int k = ofs-state_nums[i-1]; k < ofs; ++k)
+					if (base_states[k] == prevState)
+						col = k;
+				if (col != -1)
+				{
+					stockMatrix.set(row,col,1);
+					stockMatrix.set(col,row,1);
+				}
+			}
+		}
+		ofs += state_nums[i];
+	}
+
+	return stockMatrix;
 }
 
 Matrix createDiffaseMatrix(int i, vector<int> base_states)
@@ -175,7 +221,7 @@ Matrix createDiffaseMatrix(int i, vector<int> base_states)
 	i++;
 	int mask = makeMask(i);
 
-	for (int j=0; j<base_states.size(); j++)
+	for (int j = 0; j < base_states.size(); j++)
 	{
 		if ((mask & base_states[j]) == mask)
 			diffaseMatr.set(j,j,1);
@@ -250,26 +296,23 @@ Matrix density_matrix(int N, int i)
 
 // Lindblad part:--------------------------------------------------------------------------------------------------------
 
-void Lindblad_part::init (int out, std::vector<complexd> v1)
+void Lindblad_part::init (complexd out, std::vector<complexd> ls)
 {
-
 	stock = out;
-	for (int i = 0; i < v1.size(); ++i)
-		ls.push_back(v1[i]);
+	for (int i = 0; i < ls.size(); ++i)
+		l.push_back(ls[i]);
 }
 
-Matrix Lindblad_part::operator () (Matrix& R, vector<int> base_states)
+Matrix Lindblad_part::operator () (Matrix& R, vector<int> base_states, vector<int> state_nums)
 {
 	vector<Matrix> Li;
 	Matrix Out(base_states.size(),base_states.size());
 	Matrix Out2, Out3, Li_conj, Li_conj_Li;
 	complexd imag_unit(0,1.0);
-	int N = ls.size();
+	int N = l.size();
 
 //zero step - stock
-if (stock != 0)
-{
-	Li.push_back(createStockMatrix());
+	Li.push_back(createStockMatrix(base_states, state_nums));
 	Li_conj = ~Li[0];
 	Li_conj_Li = Li_conj*Li[0];
 
@@ -285,10 +328,9 @@ if (stock != 0)
 
 	Out -= Out2;
 	Out = Out*stock;
-}
 // end stock
 
-	for (int i=0; i<N; i++)
+	for (int i = 0; i < N; i++)
 	{
 		Li.push_back(createDiffaseMatrix(i, base_states));
 		Li_conj = ~Li[i];
@@ -305,7 +347,7 @@ if (stock != 0)
 		Out2 = Out2 *(1/2);
 
 		Out -= Out2;
-		Out = Out*ls[i];
+		Out = Out*l[i];
 	}
 	
 	Out = Out*imag_unit;

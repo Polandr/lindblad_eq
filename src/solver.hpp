@@ -67,13 +67,14 @@ void Solver::init_hamiltonian (const Matrix& matrix_H)
 	state_nums.push_back(base_states.size());
 }
 
-void Solver::init_hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w)
-// N - dimension of system
+void Solver::init_hamiltonian (int sys_dim, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w)
+// sys_dim - dimension of system
 // s - maximum stock level
 // E_min, E_max - minimum and maximum energy levels
 // a - probabilities between atoms
 // w - probabilities on atoms
 {
+	init_dimension(sys_dim);
 	if (a.size() != N-1 || w.size() != N)
 		throw Solver_exception("incorrect parameters in hamiltonian initialization");
 	H = hamiltonian(N, s, E_min, E_max, a, w, base_states, state_nums);
@@ -102,10 +103,12 @@ void Solver::init_density_matrix (vector<complexd> state)
 
 // Other parameters initialization:
 
-void Solver::init_lindblad (int out, std::vector<complexd> ls)
+void Solver::init_lindblad (complexd out, std::vector<complexd> l)
 {
+	if (l.size() != N)
+		throw Solver_exception("incorrect parameters in lindblad initialization");
 	L.active = true;
-	L.init(out, ls);
+	L.init(out, l);
 }
 
 void Solver::init_time_step (double dt = DEFAULT_DT)
@@ -158,6 +161,9 @@ void Solver::solve (const char* filename)
 	else
 		print_header(stdout);
 
+	Matrix test_L = L(R,base_states,state_nums);
+	cout << test_L;
+
 	complexd imag_unit(0,1);
 	Matrix U = exp(H,(-imag_unit)*dT/Plank_const);
 	Matrix conj_U = U.herm_conj();
@@ -168,7 +174,7 @@ void Solver::solve (const char* filename)
 		R = R*conj_U;
 
 		if (L.active)
-			R += dT*L(R,base_states);
+			R += dT*L(R,base_states,state_nums);
 
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
