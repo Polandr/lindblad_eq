@@ -161,9 +161,6 @@ void Solver::solve (const char* filename)
 	else
 		print_header(stdout);
 
-	Matrix test_L = L(R,base_states,state_nums);
-	cout << test_L;
-
 	complexd imag_unit(0,1);
 	Matrix U = exp(H,(-imag_unit)*dT/Plank_const);
 	Matrix conj_U = U.herm_conj();

@@ -2,18 +2,6 @@
 #include "solver.h"
 
 using namespace std;
-complexd myH(int i, int j)
-{
-	if ((i==0)&&(j==1)) return 1;
-	if ((i==1)&&(j==0)) return 1;
-	if (i==j) return 1;
-	return 0;
-}
-
-complexd myR(int i, int j)
-{
-	return ((i == 0)&&(j==0)) ? 1 : 0;
-}
 
 int main(int argc, char** argv)
 {
@@ -28,8 +16,6 @@ int main(int argc, char** argv)
 	di.push_back(0);
 	di.push_back(0);
 	//lindblad.init(1,di);
-
-
 
 	//H.generate(test_H);
 	//R0.generate(test_R);
