@@ -2,8 +2,12 @@
 #define __QUANTUM_SYSTEM_H__
 
 #include <vector>
+#include <cstdio>
+#include <iostream>
 
 #include "complex_matrix.h"
+
+using namespace std;
 
 // Hamiltonian:
 
@@ -28,17 +32,20 @@ class Lindblad_part
 	std::vector<complexd> l;
 
 	Matrix L0;
-	vector<complexd> Li;
-	vector<int> ofs;
+	vector<complexd> L;
+	int L_num () { return l.size(); }
+	int L_dim () { return L.size()/L_num(); }
 
 public:
 
 	bool active;
 
-	Lindblad_part() { active = false; }
-	void init (complexd, std::vector<complexd>);
+	Lindblad_part () { active = false; }
+	void init (complexd, vector<complexd>, vector<int> base_states, vector<int> state_nums);
 
-	Matrix operator () (Matrix&, vector<int>, vector<int>);
+	Matrix operator () (Matrix&);
+
+	void print_matrices (ostream&);
 };
 
 // Implementation:-------------------------------------------------------------------------------------------------------
@@ -69,6 +76,20 @@ void print_ketbra(int state, int N)
 			printf("0");			
 	}
 	printf(">");
+}
+
+void print_ketbra_stream(int state, int N, ostream& out = cout)
+{
+	out << '|';
+	for (int i = 0, mask = 1 << N; i < N; i++)
+	{
+		mask = mask >> 1;
+		if ((mask & state) != 0)
+			out << '1';
+		else
+			out << '0';			
+	}
+	out << '>';
 }
 
 int unit_num(int state, int N)
@@ -163,9 +184,8 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 
 int makeMask(int i)
 {
-	int x = i-1;
-	int digit = pow(2,x);
-	return digit;
+	int mask = pow(2,i);
+	return mask;
 }
 
 int getPrevState(int state, bool& found)
@@ -215,18 +235,17 @@ Matrix createStockMatrix(vector<int> base_states, vector<int> state_nums)
 	return stockMatrix;
 }
 
-Matrix createDiffaseMatrix(int i, vector<int> base_states)
+void addDephaseMatrix(vector<complexd>& L, int pos, complexd coeff, vector<int> base_states)
 {
-	Matrix diffaseMatr(base_states.size(),base_states.size());
-	i++;
-	int mask = makeMask(i);
+	int mask = makeMask(pos);
 
-	for (int j = 0; j < base_states.size(); j++)
+	for (int i = 0; i < base_states.size(); ++i)
 	{
-		if ((mask & base_states[j]) == mask)
-			diffaseMatr.set(j,j,1);
+		if ((mask & base_states[i]) == mask)
+			L.push_back(coeff);
+		else
+			L.push_back(0);
 	}
-	return diffaseMatr;
 }
 
 // Hamiltonian constructing:---------------------------------------------------------------------------------------------
@@ -296,63 +315,70 @@ Matrix density_matrix(int N, int i)
 
 // Lindblad part:--------------------------------------------------------------------------------------------------------
 
-void Lindblad_part::init (complexd out, std::vector<complexd> ls)
+void Lindblad_part::init (complexd out, vector<complexd> ls, vector<int> base_states, vector<int> state_nums)
 {
 	stock = out;
+
 	for (int i = 0; i < ls.size(); ++i)
 		l.push_back(ls[i]);
+
+	L0 = createStockMatrix(base_states, state_nums);
+
+	for (int i = 0; i < L_num(); ++i)
+		addDephaseMatrix(L,i,l[i],base_states);
 }
 
-Matrix Lindblad_part::operator () (Matrix& R, vector<int> base_states, vector<int> state_nums)
+Matrix Lindblad_part::operator () (Matrix& R)
 {
-	vector<Matrix> Li;
-	Matrix Out(base_states.size(),base_states.size());
-	Matrix Out2, Out3, Li_conj, Li_conj_Li;
-	complexd imag_unit(0,1.0);
-	int N = l.size();
+	Matrix Out;
+	complexd imag_unit(0,1);
 
-//zero step - stock
-	Li.push_back(createStockMatrix(base_states, state_nums));
-	Li_conj = ~Li[0];
-	Li_conj_Li = Li_conj*Li[0];
+	// Stock matrix
+	Out = stock*(L0*R*(L0.herm_conj()) - (1/2)*((L0.herm_conj())*L0*R + R*(L0.herm_conj())*L0));
 
-	Out = Li[0]*R;
-
-	Out = Out*Li_conj;
-
-	Out2 = Li_conj_Li*R;
-	Out3 = R*Li_conj_Li;
-
-	Out2 += Out3;
-	Out2 = Out2*(1/2);
-
-	Out -= Out2;
-	Out = Out*stock;
-// end stock
-
-	for (int i = 0; i < N; i++)
+	// Dephase matrices
+	int dim = L_dim();
+	for (int i = 0; i < L_num(); i++)
 	{
-		Li.push_back(createDiffaseMatrix(i, base_states));
-		Li_conj = ~Li[i];
-		Li_conj_Li = Li_conj*Li[i];
-		
-		Out += Li[i]*R;
-
-		Out = Out*Li_conj;
-
-		Out2 = Li_conj_Li*R;
-		Out3 = R*Li_conj_Li;
-
-		Out2 += Out3;
-		Out2 = Out2 *(1/2);
-
-		Out -= Out2;
-		Out = Out*l[i];
+		vector<complexd> diagonal(L.begin() + i*dim, L.begin() + (i+1)*dim);
+		Matrix Li = diagonal_matrix(diagonal);
+		Out += l[i]*(Li*R*(Li.herm_conj()) - (1/2)*((Li.herm_conj())*Li*R + R*(Li.herm_conj())*Li));
 	}
 	
 	Out = Out*imag_unit;
 
 	return Out;
+}
+
+void Lindblad_part::print_matrices (ostream& out = cout)
+{
+	// Stock matrix
+	if (ProcessorGrid::is_root())
+	{
+		out << "L0:\n";
+	}
+	out << L0;
+
+	// Dephase matrices
+	int dim = L_dim();
+	for (int i = 0, ofs = 0; i < L_num(); ++i)
+	{
+		if (ProcessorGrid::is_root())
+		{
+			out << "L" << (i+1) << ":\n";
+			for (int j = 0; j < dim; ++j)
+			{
+				out << L[ofs+j] << ' ';
+			}
+			out << endl;
+		}
+		/*vector<complexd> diagonal(L.begin() + ofs, L.begin() + ofs+dim);
+		Matrix Li = diagonal_matrix(diagonal);
+		out << Li;*/
+		ofs += dim;
+	}
+
+	out << flush;
 }
 
 #endif

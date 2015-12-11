@@ -43,13 +43,13 @@ class Solver_exception: public std::exception
 
 // Solver functions realization------------------------------------------------------------
 
-// Hamiltonian initialization:
+//get_hamiltonian initialization:
 
 void Solver::init_hamiltonian (const char* filename = DEFAULT_H_FILE)
 {
 	H.readf(filename);
 	if (!(H.is_square()))
-		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
+		throw Solver_exception("incorrect matrix dimensions inget_hamiltonian");
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
@@ -60,7 +60,7 @@ void Solver::init_hamiltonian (const Matrix& matrix_H)
 {
 	H = matrix_H;
 	if (!(H.is_square()))
-		throw Solver_exception("incorrect matrix dimensions in hamiltonian");
+		throw Solver_exception("incorrect matrix dimensions inget_hamiltonian");
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
@@ -76,7 +76,7 @@ void Solver::init_hamiltonian (int sys_dim, int s, int E_min, int E_max, vector<
 {
 	init_dimension(sys_dim);
 	if (a.size() != N-1 || w.size() != N)
-		throw Solver_exception("incorrect parameters in hamiltonian initialization");
+		throw Solver_exception("incorrect parameters inget_hamiltonian initialization");
 	H = hamiltonian(N, s, E_min, E_max, a, w, base_states, state_nums);
 }
 
@@ -101,6 +101,11 @@ void Solver::init_density_matrix (vector<complexd> state)
 	R = density_matrix(state);
 }
 
+void Solver::init_density_matrix (int i)
+{
+	R = density_matrix(base_states.size(), i);
+}
+
 // Other parameters initialization:
 
 void Solver::init_lindblad (complexd out, std::vector<complexd> l)
@@ -108,7 +113,7 @@ void Solver::init_lindblad (complexd out, std::vector<complexd> l)
 	if (l.size() != N)
 		throw Solver_exception("incorrect parameters in lindblad initialization");
 	L.active = true;
-	L.init(out, l);
+	L.init(out, l, base_states, state_nums);
 }
 
 void Solver::init_time_step (double dt = DEFAULT_DT)
@@ -118,7 +123,7 @@ void Solver::init_time_step (double dt = DEFAULT_DT)
 
 void Solver::init_step_num (int steps = DEFAULT_STEP_NUM)
 {
-	step_num = steps;
+	step_n = steps;
 }
 
 void Solver::init_system ()
@@ -130,17 +135,6 @@ void Solver::init_system ()
 }
 
 // Some service:
-
-void Solver::print_base_states()
-{
-	for (int i = 0, ofs = 0; i < state_nums.size(); ++i)
-	{
-		printf("Stock is %d:\n", i);
-		for (int j = 0; j < state_nums[i]; ++j, ++ofs)
-			print_ketbra(base_states[ofs], N);
-		printf("\n");
-	}
-}
 
 void print_header (FILE* file)
 {
@@ -165,13 +159,13 @@ void Solver::solve (const char* filename)
 	Matrix U = exp(H,(-imag_unit)*dT/Plank_const);
 	Matrix conj_U = U.herm_conj();
 
-	for (int i = 0; i < step_num; i++)
+	for (int i = 0; i < step_n; i++)
 	{
 		R = U*R;
 		R = R*conj_U;
 
 		if (L.active)
-			R += dT*L(R,base_states,state_nums);
+			R += dT*L(R);
 
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
@@ -183,23 +177,64 @@ void Solver::solve (const char* filename)
 		fclose(file);
 }
 
+// I/O :
+
+void Solver::print_base_states(ostream& out)
+{
+	if (ProcessorGrid::is_root())
+		for (int i = 0, ofs = 0; i < state_nums.size(); ++i)
+		{
+			out << "Stock is " << i << ":\n";
+			for (int j = 0; j < state_nums[i]; ++j, ++ofs)
+				print_ketbra_stream(base_states[ofs], N, out);
+			out << endl;
+		}
+	out << flush;
+}
+
+void Solver::operator >> (ostream& out)
+{
+	if (ProcessorGrid::is_root())
+		out << "System configuration is:\n";
+
+	/*if (ProcessorGrid::is_root())
+		out << "Base states:\n";
+	print_base_states(out);
+
+	if (ProcessorGrid::is_root())
+		out << "Matrix H:\n";
+	out << get_hamiltonian();
+	if (ProcessorGrid::is_root())
+		out << endl << "Matrix R:\n";
+	out << get_density_matrix();
+	if (ProcessorGrid::is_root())
+		out << endl << "dT: " << get_time_step();
+	if (ProcessorGrid::is_root())
+		out << endl << "step number: " << get_step_num() << endl;*/
+
+	if (ProcessorGrid::is_root())
+		out << "Lindblad:\n";
+	if (L.active)
+		L.print_matrices(out);
+
+	out << flush;
+}
+void Solver::operator << (istream& in)
+{
+	in >> get_hamiltonian();
+	in >> get_density_matrix();
+	in >> get_time_step();
+	in >> get_step_num();
+}
+
 ostream& operator << (ostream& out, Solver& src)
 {
-	out << "System configuration is:\n";
-	out << "Matrix H:\n" << src.get_hamiltonian() << endl;
-	out << "Matrix R:\n" << src.get_density_matrix() << endl;
-	out << "dT: " << src.get_time_step() << endl;
-	out << "step number: " << src.get_step_num() << endl;
-
+	src >> out;
 	return out;
 }
 
 istream& operator >> (istream& in, Solver& trg)
 {
-	in >> trg.get_hamiltonian();
-	in >> trg.get_density_matrix();
-	in >> trg.get_time_step();
-	in >> trg.get_step_num();
-
+	trg << in;
 	return in;
 }

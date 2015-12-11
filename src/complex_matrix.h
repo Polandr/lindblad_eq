@@ -68,13 +68,13 @@ public:
 	Matrix operator * (complexd) const;
 
 
-	Matrix& operator += (const Matrix&);
-	Matrix operator + (const Matrix&) const;
+	Matrix& operator += (const Matrix);
+	Matrix operator + (const Matrix) const;
 
-	Matrix& operator -= (const Matrix&);
-	Matrix operator - (const Matrix&) const;
+	Matrix& operator -= (const Matrix);
+	Matrix operator - (const Matrix) const;
 
-	Matrix operator * (Matrix&) const;
+	Matrix operator * (Matrix) const;
 	Matrix diagonalize(std::vector<complexd>&) const;
 
 // I/O part

@@ -22,14 +22,14 @@ class Solver
 	
 	Lindblad_part L;
 	double dT;
-	int step_num;
+	int step_n;
 
 public:
 
 	Matrix& get_hamiltonian () { return H; }
 	Matrix& get_density_matrix () { return R; }
 	double& get_time_step () { return dT; }
-	int& get_step_num () { return step_num; }
+	int& get_step_num () { return step_n; }
 
 	void init_dimension(int dim) { N = dim; }
 
@@ -40,6 +40,7 @@ public:
 	void init_density_matrix (const char*);
 	void init_density_matrix (const Matrix&);
 	void init_density_matrix (vector<complexd>);
+	void init_density_matrix (int);
 
 	void init_lindblad (complexd, std::vector<complexd>);
 	void init_time_step (double);
@@ -49,7 +50,9 @@ public:
 
 	void solve (const char*);
 
-	void print_base_states();
+	void print_base_states(std::ostream&);
+	void operator >> (std::ostream&);
+	void operator << (std::istream&);
 };
 
 std::ostream& operator << (std::ostream&, Solver&);

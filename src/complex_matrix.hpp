@@ -276,7 +276,7 @@ Matrix operator * (const complexd val, const Matrix& mat)
 	return  mat*val;
 }
 
-Matrix& Matrix::operator += (const Matrix& A)
+Matrix& Matrix::operator += (const Matrix A)
 {
 	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
 		throw Matrix_exception("incomatible sizes of matrices in summation");
@@ -285,14 +285,14 @@ Matrix& Matrix::operator += (const Matrix& A)
 	return *this;
 }
 
-Matrix Matrix::operator + (const Matrix& A) const
+Matrix Matrix::operator + (const Matrix A) const
 {
 	Matrix out(*this);
 	out += A;
 	return out;
 }
 
-Matrix& Matrix::operator -= (const Matrix& A)
+Matrix& Matrix::operator -= (const Matrix A)
 {
 	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
 		throw Matrix_exception("incomatible sizes of matrices in summation");
@@ -301,7 +301,7 @@ Matrix& Matrix::operator -= (const Matrix& A)
 	return *this;
 }
 
-Matrix Matrix::operator - (const Matrix& A) const
+Matrix Matrix::operator - (const Matrix A) const
 {
 	Matrix out(*this);
 	out -= A;
@@ -309,7 +309,7 @@ Matrix Matrix::operator - (const Matrix& A) const
 }
 
 
-Matrix Matrix::operator * (Matrix& b) const
+Matrix Matrix::operator * (Matrix b) const
 {
 	if (global_n_cols() != b.global_n_rows())
 		throw Matrix_exception("incomatible sizes of matrices in multiplication");

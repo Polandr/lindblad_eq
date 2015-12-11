@@ -80,7 +80,7 @@ void write_elems(ostream& out, double* buf, int count)
 		out << /*setprecision(2) << */
 		'(' << buf[2*i] << ',' << buf[2*i+1] << ')';
 		if (i != count-1)
-			out << ' ';
+			out << '\t';
 	}
 }
 
@@ -128,7 +128,7 @@ void Matrix::stream_output (ostream& out)
 			if (ofs % global_n_cols() == 0)
 				out << endl;
 			else
-				out << ' ';
+				out << '\t';
 
 			free(buf);
 		}
