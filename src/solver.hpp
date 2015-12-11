@@ -6,6 +6,10 @@
 #define DEFAULT_DT 0.1
 #define DEFAULT_STEP_NUM 1
 
+#ifndef EPS
+#define EPS 0.000001
+#endif
+
 using namespace std;
 
 // Solver exception class-----------------------------------------------------------------
@@ -41,15 +45,42 @@ class Solver_exception: public std::exception
 	}	
 };
 
+// Service functions:
+
+void normalize_probabilities_with_warning(vector<double>& probs)
+{
+	double probs_sum = 0;
+	for (int i = 0; i < probs.size(); ++i)
+		probs_sum += probs[i];
+	if (fabs(probs_sum - 1) >= EPS)
+	// If sum of probabilities is not equal to 1 then normalize probabilities
+	{
+		if (ProcessorGrid::is_root())
+			cout << "Incorrect probability sequence, normalizing it.\n";
+		for (int i = 0; i < probs.size(); ++i)
+			if (probs_sum != 0)
+				probs[i] /= probs_sum;
+			else
+				probs[i] = 1/probs.size();
+
+	}
+}
+
+void print_header (FILE* file)
+{
+	if (ProcessorGrid::is_root())
+		fprintf(file, "Magnitudes of diagonal elements are:\n");
+}
+
 // Solver functions realization------------------------------------------------------------
 
-//get_hamiltonian initialization:
+// Hamiltonian initialization:
 
 void Solver::init_hamiltonian (const char* filename = DEFAULT_H_FILE)
 {
 	H.readf(filename);
 	if (!(H.is_square()))
-		throw Solver_exception("incorrect matrix dimensions inget_hamiltonian");
+		throw Solver_exception("incorrect matrix dimensions in hamiltonian initialization");
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
@@ -60,7 +91,7 @@ void Solver::init_hamiltonian (const Matrix& matrix_H)
 {
 	H = matrix_H;
 	if (!(H.is_square()))
-		throw Solver_exception("incorrect matrix dimensions inget_hamiltonian");
+		throw Solver_exception("incorrect matrix dimensions in hamiltonian initialization");
 	base_states.resize(0);
 	for (int i = 0; i < H.global_n_rows(); i++)
 		base_states.push_back(i);
@@ -76,7 +107,7 @@ void Solver::init_hamiltonian (int sys_dim, int s, int E_min, int E_max, vector<
 {
 	init_dimension(sys_dim);
 	if (a.size() != N-1 || w.size() != N)
-		throw Solver_exception("incorrect parameters inget_hamiltonian initialization");
+		throw Solver_exception("incorrect parameters in hamiltonian initialization");
 	H = hamiltonian(N, s, E_min, E_max, a, w, base_states, state_nums);
 }
 
@@ -86,14 +117,14 @@ void Solver::init_density_matrix (const char* filename = DEFAULT_R_FILE)
 {
 	R.readf(filename);
 	if (!(R.is_square()))
-		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
+		throw Solver_exception("incorrect matrix dimensions in initital density matrix initialization");
 }
 
 void Solver::init_density_matrix (const Matrix& matrix_R)
 {
 	R = matrix_R;
 	if (!(R.is_square()))
-		throw Solver_exception("incorrect matrix dimensions in initital density matrix");
+		throw Solver_exception("incorrect matrix dimensions in initital density matrix initialization");
 }
 
 void Solver::init_density_matrix (vector<complexd> state)
@@ -101,9 +132,22 @@ void Solver::init_density_matrix (vector<complexd> state)
 	R = density_matrix(state);
 }
 
-void Solver::init_density_matrix (int i)
+void Solver::init_density_matrix (int pos)
 {
-	R = density_matrix(base_states.size(), i);
+	R = density_matrix(base_states.size(), pos);
+}
+
+void Solver::init_density_matrix (vector<double> qbit_probs, vector<double> stock_probs)
+{
+	if (qbit_probs.size() != N || stock_probs.size() != state_nums.size())
+		throw Solver_exception("incorrect parameters in initital density matrix initialization");
+
+	for (int i = 0; i < qbit_probs.size(); ++i)
+		if (qbit_probs[i] > 1)
+			throw Solver_exception("incorrect parameters in initital density matrix initialization");
+	normalize_probabilities_with_warning(stock_probs);	
+
+	R = density_matrix(qbit_probs, stock_probs, base_states, state_nums);
 }
 
 // Other parameters initialization:
@@ -132,14 +176,6 @@ void Solver::init_system ()
 	init_density_matrix(DEFAULT_R_FILE);
 	init_time_step(DEFAULT_DT);
 	init_step_num(DEFAULT_STEP_NUM);
-}
-
-// Some service:
-
-void print_header (FILE* file)
-{
-	if (ProcessorGrid::is_root())
-		fprintf(file, "Magnitudes of diagonal elements are:\n");
 }
 
 // Main function-------------------------------------------------------------------------
@@ -197,7 +233,7 @@ void Solver::operator >> (ostream& out)
 	if (ProcessorGrid::is_root())
 		out << "System configuration is:\n";
 
-	/*if (ProcessorGrid::is_root())
+	if (ProcessorGrid::is_root())
 		out << "Base states:\n";
 	print_base_states(out);
 
@@ -210,7 +246,7 @@ void Solver::operator >> (ostream& out)
 	if (ProcessorGrid::is_root())
 		out << endl << "dT: " << get_time_step();
 	if (ProcessorGrid::is_root())
-		out << endl << "step number: " << get_step_num() << endl;*/
+		out << endl << "step number: " << get_step_num() << endl;
 
 	if (ProcessorGrid::is_root())
 		out << "Lindblad:\n";

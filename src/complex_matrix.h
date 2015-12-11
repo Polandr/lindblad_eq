@@ -44,7 +44,7 @@ public:
 	const complexd get (int) const;
 	double* get_data () const;
 	void get_row (double*, int) const;
-	const complexd operator () (int, int) const;
+	const complexd operator () (int, int) const; // Read-only!
 
 	void set (int, int, complexd);
 	void set (int, complexd);
@@ -60,10 +60,15 @@ public:
 
 
 	void in_place_transposition();
+	// Local transposition
 	Matrix operator ~ () const;
+	// Gloabl transposition
 	Matrix conj () const;
+	// Each element conjugation
 	Matrix herm_conj () const;
+	// Hermitian conjugation (transposition + element conjugation)
 	Matrix& operator = (const Matrix&);
+
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
 
@@ -94,11 +99,10 @@ public:
 std::ostream& operator << (std::ostream&, Matrix&);
 std::istream& operator >> (std::istream&, Matrix&);
 
-Matrix exp (Matrix, double);
 Matrix operator * (const complexd, const Matrix&);
 
-Matrix exp (Matrix&, complexd);
-Matrix commutator (Matrix&, Matrix&);
+Matrix exp (Matrix& matrix, complexd coeff);
+Matrix commutator (Matrix& A, Matrix& B);
 Matrix diagonal_matrix(vector<complexd> values);
 
 #include "complex_matrix.hpp"

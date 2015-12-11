@@ -8,10 +8,7 @@ int main(int argc, char** argv)
 	ProcessorGrid::default_init();
 
 
-	std::vector<complexd> di;
-	di.push_back(1);
-	di.push_back(2);
-	//lindblad.init(1,di);
+	
 
 	//H.generate(test_H);
 	//R0.generate(test_R);
@@ -23,16 +20,25 @@ int main(int argc, char** argv)
 	a[0] = 1;
 	w[0] = 2; w[1] = 3;
 	solver.init_hamiltonian(2,2,0,2,a,w);
-	solver.init_density_matrix(0);
+
+	vector<double> q_probs(2), s_probs(3);
+	q_probs[0] = 0.5; q_probs[1] = 0;
+	s_probs[0] = 0; s_probs[1] = 1; s_probs[2] = 0;
+	solver.init_density_matrix(q_probs,s_probs);
+
+	cout << solver.get_density_matrix();
 
 	solver.init_time_step(1);
 	solver.init_step_num(1);
 
-	//solver.init_lindblad(3,di);
+	std::vector<complexd> d;
+	d.push_back(1);
+	d.push_back(2);
+	solver.init_lindblad(3,d);
 
-	cout << solver;
+	//cout << solver;
 
-	solver.solve(NULL);
+	//solver.solve(NULL);
 
 
 	// Hamiltonian constructing test---------------------------------------------------------------

@@ -7,6 +7,10 @@
 
 #include "complex_matrix.h"
 
+#ifndef EPS
+#define EPS 0.000001
+#endif
+
 using namespace std;
 
 // Hamiltonian:
@@ -23,6 +27,7 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vect
 
 Matrix density_matrix(vector<complexd> state);
 Matrix density_matrix(int N, int i);
+Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums);
 
 // Lindblad:
 
@@ -104,6 +109,8 @@ int unit_num(int state, int N)
 	return out;
 }
 
+// For hamiltonian:
+
 vector<int> collect_base_states (int E_low, int E_high, int N)
 {
 	vector<int> cur_base_states;
@@ -178,6 +185,22 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 			return complexd(0,0);
 		}
 	}
+}
+
+// For density matrix:
+
+double state_probability(int state, vector<double> qbit_probs)
+{
+	double out = 1;
+	for (int i = 0, mask = 1; i < qbit_probs.size(); i++)
+	{
+		if ((mask & state) != 0)
+			out *= qbit_probs[i];
+		else
+			out *= (1 - qbit_probs[i]);
+		mask = mask << 1;
+	}
+	return out;
 }
 
 // For Lindblad:
@@ -312,6 +335,35 @@ Matrix density_matrix(int N, int i)
 	state[i] = 1;
 	return density_matrix(state);
 }
+
+Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums)
+{
+	vector<complexd> diagonal(base_states.size(),0);
+
+	double probs_sum = 0;
+	for (int block_num = 0, ofs = 0; block_num < state_nums.size(); block_num++)
+	{
+		for (int i = ofs; i < ofs + state_nums[block_num]; i++)
+		{
+			diagonal[i] = state_probability(base_states[i],qbit_probs) * stock_probs[block_num];
+			probs_sum += diagonal[i].real();
+		}
+		ofs += state_nums[block_num];
+	}
+
+	if (fabs(probs_sum - 1) >= EPS)
+	// If sum of probabilities is not equal to 1 then normalize probabilities
+	{
+		for (int i = 0; i < diagonal.size(); ++i)
+			if (probs_sum != 0)
+				diagonal[i] /= probs_sum;
+			else
+				diagonal[i] = 1.0/diagonal.size();
+	}
+
+	return diagonal_matrix(diagonal);
+}
+
 
 // Lindblad part:--------------------------------------------------------------------------------------------------------
 

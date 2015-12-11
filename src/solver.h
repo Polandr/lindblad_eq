@@ -33,22 +33,40 @@ public:
 
 	void init_dimension(int dim) { N = dim; }
 
-	void init_hamiltonian (const char*);
-	void init_hamiltonian (const Matrix&);
-	void init_hamiltonian (int, int, int, int, std::vector<complexd>, std::vector<complexd>);
+	void init_hamiltonian (const char* filename);
+	void init_hamiltonian (const Matrix& matrix_H);
+	void init_hamiltonian (int sys_dim, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w);
+	// Make hamiltonian for definite system with parameters:
+	// sys_dim - dimension of system
+	// s - maximum stock level
+	// E_min, E_max - minimum and maximum energy levels
+	// a - probabilities between atoms
+	// w - probabilities on atoms
 
-	void init_density_matrix (const char*);
-	void init_density_matrix (const Matrix&);
-	void init_density_matrix (vector<complexd>);
-	void init_density_matrix (int);
+	void init_density_matrix (const char* filename);
+	void init_density_matrix (const Matrix& matrix_R);
+	void init_density_matrix (vector<complexd> state);
+	// Make density matrix for quantum state
+	void init_density_matrix (int pos);
+	// Make density matrix with single 1 on main diagonal on position number <pos> and other elemants set as 0
+	// Requires base_states initialization
+	void init_density_matrix (vector<double> qbit_probs, vector<double> stock_probs);
+	// Make density matrix with probabilities of {qbit = 1} event as <qbit_probs> and {stock = i} event as <stock_probs>
+	// If <qbit_probs> designate set of possible states (at least 1): states which were set during hamiltonian construction
+	// then set of possible states are chosen with certain ratio
+	// If <qbit_probs> designate set of impossible states
+	// then all states are set as equiprobable
+	// Requires base_states initialization
 
-	void init_lindblad (complexd, std::vector<complexd>);
-	void init_time_step (double);
-	void init_step_num (int);
+	void init_time_step (double time);
+	void init_step_num (int steps);
+	void init_lindblad (complexd stock, std::vector<complexd> l);
 
 	void init_system ();
+	// Unsafe!
+	// Some default initialization
 
-	void solve (const char*);
+	void solve (const char* filename);
 
 	void print_base_states(std::ostream&);
 	void operator >> (std::ostream&);
