@@ -19,7 +19,7 @@ class Processors_exception: public std::exception
 	virtual const char* what() const throw()
 	{
 		char* tmp = errstr;
-		char* prefix = const_cast <char*> ("Complex matrix error: ");
+		char* prefix = const_cast <char*> ("Error in processor grid: ");
 		try
 		{
 			errstr = new char [strlen(prefix)+strlen(errstr)+2];
