@@ -544,7 +544,7 @@ bool all_elements(int i, int j)
 }
 
 void Matrix::print_diagonal_abs(FILE* file)
-// Need serialization here
+// Need queue here
 {
 	int min_dim = (global_n_rows() < global_n_cols())? global_n_rows() : global_n_cols();
 	int* local_proc_info = gather_info();

@@ -248,7 +248,7 @@ Matrix createStockMatrix(vector<int> base_states, vector<int> state_nums)
 				if (col != -1)
 				{
 					stockMatrix.set(row,col,1);
-					stockMatrix.set(col,row,1);
+					//stockMatrix.set(col,row,1);
 				}
 			}
 		}
@@ -258,14 +258,14 @@ Matrix createStockMatrix(vector<int> base_states, vector<int> state_nums)
 	return stockMatrix;
 }
 
-void addDephaseMatrix(vector<complexd>& L, int pos, complexd coeff, vector<int> base_states)
+void addDephaseMatrix(vector<complexd>& L, int pos, vector<int> base_states)
 {
 	int mask = makeMask(pos);
 
 	for (int i = 0; i < base_states.size(); ++i)
 	{
 		if ((mask & base_states[i]) == mask)
-			L.push_back(coeff);
+			L.push_back(1);
 		else
 			L.push_back(0);
 	}
@@ -377,13 +377,12 @@ void Lindblad_part::init (complexd out, vector<complexd> ls, vector<int> base_st
 	L0 = createStockMatrix(base_states, state_nums);
 
 	for (int i = 0; i < L_num(); ++i)
-		addDephaseMatrix(L,i,l[i],base_states);
+		addDephaseMatrix(L,i,base_states);
 }
 
 Matrix Lindblad_part::operator () (Matrix& R)
 {
 	Matrix Out;
-	complexd imag_unit(0,1);
 
 	// Stock matrix
 	Out = stock*(L0*R*(L0.herm_conj()) - 0.5*((L0.herm_conj())*L0*R + R*(L0.herm_conj())*L0));

@@ -86,6 +86,18 @@ void ProcessorGrid::square_init (int start_row = STRT_R, int start_col = STRT_C,
 	ProcessorGrid::init(proc_dim, proc_dim, start_row, start_col, rt);
 }
 
+void ProcessorGrid::root_print(const char* string)
+{
+	if (is_root())
+		cout << string << flush;
+}
+
+void ProcessorGrid::endline()
+{
+	if (is_root())
+		cout << endl << flush;
+}
+
 void ProcessorGrid::exit()
 {
 	Cblacs_gridexit(context);

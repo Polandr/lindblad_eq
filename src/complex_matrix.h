@@ -72,7 +72,6 @@ public:
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
 
-
 	Matrix& operator += (const Matrix);
 	Matrix operator + (const Matrix) const;
 
@@ -87,7 +86,7 @@ public:
 	int readf (const char*, int, int);
 	void writef (int, const char*);
 	void print_on_condition (std::ostream&, bool (*cond)(int, int));
-	void print_diagonal_abs(FILE*);
+	void print_diagonal_abs (FILE*);
 	void generate (complexd (*func)(int, int));
 
 	void operator >> (std::ostream&);
