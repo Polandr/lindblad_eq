@@ -69,9 +69,7 @@ int main(int argc, char** argv)
 	C = exp(D,imag_unit);
 	cout << C;
 	ProcessorGrid::endline();
-
 	
-
 
 	ProcessorGrid::exit();
 }
