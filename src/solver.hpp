@@ -248,7 +248,7 @@ void Solver::operator >> (ostream& out)
 	if (ProcessorGrid::is_root())
 		out << endl << "step number: " << get_step_num() << endl;
 
-	if (ProcessorGrid::is_root())
+	if (ProcessorGrid::is_root() && L.active)
 		out << "Lindblad:\n";
 	if (L.active)
 		L.print_matrices(out);

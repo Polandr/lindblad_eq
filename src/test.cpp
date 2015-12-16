@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 	//solver.init_hamiltonian(H);
 	vector<complexd> a(1), w(2);
 	a[0] = 1;
-	w[0] = 2; w[1] = 3;
+	w[0] = 1; w[1] = 1;
 	solver.init_hamiltonian(2,2,0,2,a,w);
 
 	vector<double> q_probs(2), s_probs(3);
@@ -28,13 +28,13 @@ int main(int argc, char** argv)
 
 	//cout << solver.get_density_matrix();
 
-	solver.init_time_step(0.1);
-	solver.init_step_num(100);
+	solver.init_time_step(1);
+	solver.init_step_num(1);
 
 	std::vector<complexd> d;
 	d.push_back(1);
 	d.push_back(1);
-	solver.init_lindblad(1,d);
+	//solver.init_lindblad(1,d);
 
 	//cout << solver;
 

@@ -464,13 +464,20 @@ Matrix exp (Matrix& A, complexd c)
 	U = A.diagonalize(eigenvalues);
 	U_c = U.herm_conj();
 
-	for (int i=distr.row_offset()+D.n_rows; i>=distr.row_offset(); i--)
+	/*for (int i=distr.row_offset()+D.n_rows; i>=distr.row_offset(); i--)
 		for (int j=distr.col_offset()+D.n_cols; j>=distr.col_offset(); j--)
 			if (i==j)
-				D.set(i,j,exp(eigenvalues[i]*c));
+				D.set(i,j,exp(eigenvalues[i]*c));*/
+	for (int i = 0; i < D.global_n_rows(); ++i)
+		D.set(i,i,exp(eigenvalues[i]*c));
 
-	Out = U_c * D; 
+	Out = U_c * D;
 	Out = Out * U;
+
+// <TEST OUTPUT>
+	cout << U;
+	ProcessorGrid::endline();
+// </TEST OUTPUT>
 			
 	return Out;
 }
