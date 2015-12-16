@@ -386,7 +386,7 @@ Matrix Lindblad_part::operator () (Matrix& R)
 	complexd imag_unit(0,1);
 
 	// Stock matrix
-	Out = stock*(L0*R*(L0.herm_conj()) - (1/2)*((L0.herm_conj())*L0*R + R*(L0.herm_conj())*L0));
+	Out = stock*(L0*R*(L0.herm_conj()) - 0.5*((L0.herm_conj())*L0*R + R*(L0.herm_conj())*L0));
 
 	// Dephase matrices
 	int dim = L_dim();
@@ -394,10 +394,8 @@ Matrix Lindblad_part::operator () (Matrix& R)
 	{
 		vector<complexd> diagonal(L.begin() + i*dim, L.begin() + (i+1)*dim);
 		Matrix Li = diagonal_matrix(diagonal);
-		Out += l[i]*(Li*R*(Li.herm_conj()) - (1/2)*((Li.herm_conj())*Li*R + R*(Li.herm_conj())*Li));
+		Out += l[i]*(Li*R*(Li.herm_conj()) - 0.5*((Li.herm_conj())*Li*R + R*(Li.herm_conj())*Li));
 	}
-	
-	Out = Out*imag_unit;
 
 	return Out;
 }
