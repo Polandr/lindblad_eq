@@ -42,7 +42,7 @@ public:
 	const Distribution& get_distribution () const { return info; }
 	const int* get_descriptor() const { return info.descriptor; }
 	const complexd get (int) const;
-	double* get_data () const;
+	void get_data (double* ) const;
 	void get_row (double*, int) const;
 	const complexd operator () (int, int) const; // Read-only!
 
