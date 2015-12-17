@@ -19,7 +19,7 @@ class Processors_exception: public std::exception
 	virtual const char* what() const throw()
 	{
 		char* tmp = errstr;
-		char* prefix = const_cast <char*> ("Complex matrix error: ");
+		char* prefix = const_cast <char*> ("Error in processor grid: ");
 		try
 		{
 			errstr = new char [strlen(prefix)+strlen(errstr)+2];
@@ -84,6 +84,18 @@ void ProcessorGrid::square_init (int start_row = STRT_R, int start_col = STRT_C,
 	Cblacs_pinfo(&proc_num,&grid_size);
 	int proc_dim = (int)sqrt(grid_size);
 	ProcessorGrid::init(proc_dim, proc_dim, start_row, start_col, rt);
+}
+
+void ProcessorGrid::root_print(const char* string)
+{
+	if (is_root())
+		cout << string << flush;
+}
+
+void ProcessorGrid::endline()
+{
+	if (is_root())
+		cout << endl << flush;
 }
 
 void ProcessorGrid::exit()

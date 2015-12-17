@@ -2,8 +2,16 @@
 #define __QUANTUM_SYSTEM_H__
 
 #include <vector>
+#include <cstdio>
+#include <iostream>
 
 #include "complex_matrix.h"
+
+#ifndef EPS
+#define EPS 0.000001
+#endif
+
+using namespace std;
 
 // Hamiltonian:
 
@@ -19,22 +27,30 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vect
 
 Matrix density_matrix(vector<complexd> state);
 Matrix density_matrix(int N, int i);
+Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums);
 
 // Lindblad:
 
 class Lindblad_part
 {
-	int stock;
-	std::vector<complexd> ls;
+	complexd stock;
+	std::vector<complexd> l;
+
+	Matrix L0;
+	vector<complexd> L;
+	int L_num () { return l.size(); }
+	int L_dim () { return L.size()/L_num(); }
 
 public:
 
 	bool active;
 
-	Lindblad_part() { active = false; }
-	void init (int, std::vector<complexd>);
+	Lindblad_part () { active = false; }
+	void init (complexd, vector<complexd>, vector<int> base_states, vector<int> state_nums);
 
-	Matrix operator () (Matrix&, vector<int>);
+	Matrix operator () (Matrix&);
+
+	void print_matrices (ostream&);
 };
 
 // Implementation:-------------------------------------------------------------------------------------------------------
@@ -53,6 +69,34 @@ int combination_num(int k, int n)
 	return out;
 }
 
+void print_ketbra(int state, int N)
+{
+	printf("|");
+	for (int i = 0, mask = 1 << N; i < N; i++)
+	{
+		mask = mask >> 1;
+		if ((mask & state) != 0)
+			printf("1");
+		else
+			printf("0");			
+	}
+	printf(">");
+}
+
+void print_ketbra_stream(int state, int N, ostream& out = cout)
+{
+	out << '|';
+	for (int i = 0, mask = 1 << N; i < N; i++)
+	{
+		mask = mask >> 1;
+		if ((mask & state) != 0)
+			out << '1';
+		else
+			out << '0';			
+	}
+	out << '>';
+}
+
 int unit_num(int state, int N)
 {
 	int out = 0;
@@ -65,15 +109,10 @@ int unit_num(int state, int N)
 	return out;
 }
 
-void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states)
+// For hamiltonian:
+
+vector<int> collect_base_states (int E_low, int E_high, int N)
 {
-	int mask = 1;
-	int full_energy_state = 0;
-	for (int i = 0; i < N; i++)
-	{
-		full_energy_state = full_energy_state | mask;
-		mask = mask << 1;
-	}
 	vector<int> cur_base_states;
 	int pow_N = pow(2,N);
 	for (int i = 0; i < pow_N; i++)
@@ -82,7 +121,8 @@ void collect_base_states (int E_low, int E_high, int N, vector<int>& base_states
 		if (E_lvl >= E_low && E_lvl <= E_high)
 			cur_base_states.push_back(i);
 	}
-	base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
+
+	return cur_base_states;
 }
 
 int simple_transition(int state_1, int state_2, int N)
@@ -147,9 +187,94 @@ complexd hamiltonian_element(int row, int col, int N, vector<complexd> a, vector
 	}
 }
 
+// For density matrix:
+
+double state_probability(int state, vector<double> qbit_probs)
+{
+	double out = 1;
+	for (int i = 0, mask = 1; i < qbit_probs.size(); i++)
+	{
+		if ((mask & state) != 0)
+			out *= qbit_probs[i];
+		else
+			out *= (1 - qbit_probs[i]);
+		mask = mask << 1;
+	}
+	return out;
+}
+
+// For Lindblad:
+
+int makeMask(int i)
+{
+	int mask = pow(2,i);
+	return mask;
+}
+
+int getPrevState(int state, bool& found)
+{
+	if ((state & 1) == 0)
+	{
+		found = true;
+		return (state | 1);
+	}
+	else
+	{
+		found = false;
+		return -1;
+	}
+}
+
+Matrix createStockMatrix(vector<int> base_states, vector<int> state_nums)
+{
+	Matrix stockMatrix(base_states.size(),base_states.size());
+
+	if (state_nums.size() == 1)
+		return stockMatrix;
+
+	int ofs = state_nums[0];
+	for (int i = 1; i < state_nums.size(); ++i)
+	{
+		for (int row = ofs; row < ofs + state_nums[i]; ++row)
+		{
+			bool found;
+			int prevState = getPrevState(base_states[row], found);
+			if (found)
+			{
+				int col = -1;
+				for (int k = ofs-state_nums[i-1]; k < ofs; ++k)
+					if (base_states[k] == prevState)
+						col = k;
+				if (col != -1)
+				{
+					stockMatrix.set(row,col,1);
+					//stockMatrix.set(col,row,1);
+				}
+			}
+		}
+		ofs += state_nums[i];
+	}
+
+	return stockMatrix;
+}
+
+void addDephaseMatrix(vector<complexd>& L, int pos, vector<int> base_states)
+{
+	int mask = makeMask(pos);
+
+	for (int i = 0; i < base_states.size(); ++i)
+	{
+		if ((mask & base_states[i]) == mask)
+			L.push_back(1.0);
+		else
+			L.push_back(0);
+	}
+}
+
 // Hamiltonian constructing:---------------------------------------------------------------------------------------------
 
-Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w, vector<int>& base_states)
+Matrix hamiltonian (int N, int s, int E_min, int E_max, 
+	vector<complexd> a, vector<complexd> w, vector<int>& base_states, vector<int>& state_nums)
 // N - dimension of system
 // s - maximum stock level
 // E_min, E_max - minimum and maximum energy levels
@@ -163,23 +288,30 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vect
 
 	for (int i = 0; i <= s; i++)
 	{
-		int low = max(0,E_min-s);
-		int high = max(0,E_max-s);
-		collect_base_states(low,high,N,base_states);
+		int low = max(0,E_min-i);
+		int high = max(0,E_max-i);
+		vector<int> cur_base_states = collect_base_states(low,high,N);
+		state_nums.push_back(cur_base_states.size());
+		base_states.insert(base_states.end(),cur_base_states.begin(),cur_base_states.end());
 	}
 
 	H.init(base_states.size(),base_states.size());
-	for (int i = 0; i < base_states.size(); i++)
-		for (int j = i; j < base_states.size(); j++)
-		{
-			complexd val = hamiltonian_element(i,j,N,a,w,base_states);
-			if (val != complexd(0,0))
+
+	for (int block_num = 0, ofs = 0; block_num < state_nums.size(); block_num++)
+	{
+		for (int i = ofs; i < ofs + state_nums[block_num]; i++)
+			for (int j = i; j < ofs + state_nums[block_num]; j++)
 			{
-				H.set(i,j,val);
-				if (i != j)
-					H.set(j,i,conj(val));
+				complexd val = hamiltonian_element(i,j,N,a,w,base_states);
+				if (val != complexd(0,0))
+				{
+					H.set(i,j,val);
+					if (i != j)
+						H.set(j,i,conj(val));
+				}
 			}
-		}
+		ofs += state_nums[block_num];
+	}
 
 	return H;	
 }
@@ -204,95 +336,98 @@ Matrix density_matrix(int N, int i)
 	return density_matrix(state);
 }
 
-int makeMask(int i)
+Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums)
 {
-	int x = i-1;
-	int digit = pow(2,x);
-	return digit;
-}
+	vector<complexd> diagonal(base_states.size(),0);
 
-Matrix createStockMatrix()
-{
-	;
-}
-
-Matrix createDiffaseMatrix(int i, vector<int> base_states)
-{
-	Matrix diffaseMatr(base_states.size(),base_states.size());
-	i++;
-	int mask = makeMask(i);
-
-	for (int j=0; j<base_states.size(); j++)
+	double probs_sum = 0;
+	for (int block_num = 0, ofs = 0; block_num < state_nums.size(); block_num++)
 	{
-		if ((mask & base_states[j]) == mask)
-			diffaseMatr.set(j,j,1);
+		for (int i = ofs; i < ofs + state_nums[block_num]; i++)
+		{
+			diagonal[i] = state_probability(base_states[i],qbit_probs) * stock_probs[block_num];
+			probs_sum += diagonal[i].real();
+		}
+		ofs += state_nums[block_num];
 	}
-	return diffaseMatr;
+
+	if (fabs(probs_sum - 1) >= EPS)
+	// If sum of probabilities is not equal to 1 then normalize probabilities
+	{
+		for (int i = 0; i < diagonal.size(); ++i)
+			if (probs_sum != 0)
+				diagonal[i] /= probs_sum;
+			else
+				diagonal[i] = 1.0/diagonal.size();
+	}
+
+	return diagonal_matrix(diagonal);
 }
+
 
 // Lindblad part:--------------------------------------------------------------------------------------------------------
 
-void Lindblad_part::init (int out, std::vector<complexd> v1)
+void Lindblad_part::init (complexd out, vector<complexd> ls, vector<int> base_states, vector<int> state_nums)
 {
-
 	stock = out;
-	for (int i = 0; i < v1.size(); ++i)
-		ls.push_back(v1[i]);
+
+	for (int i = 0; i < ls.size(); ++i)
+		l.push_back(ls[i]);
+
+	L0 = createStockMatrix(base_states, state_nums);
+
+	for (int i = 0; i < L_num(); ++i)
+		addDephaseMatrix(L,i,base_states);
 }
 
-Matrix Lindblad_part::operator () (Matrix& R, vector<int> base_states)
+Matrix Lindblad_part::operator () (Matrix& R)
 {
-	vector<Matrix> Li;
-	Matrix Out(base_states.size(),base_states.size());
-	Matrix Out2, Out3, Li_conj, Li_conj_Li;
-	complexd imag_unit(0,1.0);
-	int N = ls.size();
+	Matrix Out;
 
-//zero step - stock
-if (stock != 0)
-{
-	Li.push_back(createStockMatrix());
-	Li_conj = ~Li[0];
-	Li_conj_Li = Li_conj*Li[0];
+	// Stock matrix
+	Out = stock*(L0*R*(L0.herm_conj()) - 0.5*((L0.herm_conj())*L0*R + R*(L0.herm_conj())*L0));
 
-	Out = Li[0]*R;
-
-	Out = Out*Li_conj;
-
-	Out2 = Li_conj_Li*R;
-	Out3 = R*Li_conj_Li;
-
-	Out2 += Out3;
-	Out2 = Out2*(1/2);
-
-	Out -= Out2;
-	Out = Out*stock;
-}
-// end stock
-
-	for (int i=0; i<N; i++)
+	// Dephase matrices
+	int dim = L_dim();
+	for (int i = 0; i < L_num(); i++)
 	{
-		Li.push_back(createDiffaseMatrix(i, base_states));
-		Li_conj = ~Li[i];
-		Li_conj_Li = Li_conj*Li[i];
-		
-		Out += Li[i]*R;
-
-		Out = Out*Li_conj;
-
-		Out2 = Li_conj_Li*R;
-		Out3 = R*Li_conj_Li;
-
-		Out2 += Out3;
-		Out2 = Out2 *(1/2);
-
-		Out -= Out2;
-		Out = Out*ls[i];
+		vector<complexd> diagonal(L.begin() + i*dim, L.begin() + (i+1)*dim);
+		Matrix Li = diagonal_matrix(diagonal);
+		Out += l[i]*(Li*R*(Li.herm_conj()) - 0.5*((Li.herm_conj())*Li*R + R*(Li.herm_conj())*Li));
 	}
-	
-	Out = Out*imag_unit;
 
 	return Out;
+}
+
+void Lindblad_part::print_matrices (ostream& out = cout)
+{
+	// Stock matrix
+	if (ProcessorGrid::is_root())
+	{
+		out << "L0:\n";
+	}
+	out << L0;
+
+	// Dephase matrices
+	int dim = L_dim();
+	for (int i = 0, ofs = 0; i < L_num(); ++i)
+	{
+		if (ProcessorGrid::is_root())
+		{
+			out << "L" << (i+1) << ":\n";
+			for (int j = 0; j < dim; ++j)
+			{
+				out << L[ofs+j] << ' ';
+			}
+			out << endl;
+		}
+		/*vector<complexd> diagonal(L.begin() + ofs, L.begin() + ofs+dim);
+		Matrix Li = diagonal_matrix(diagonal);
+		out << Li;*/
+		ofs += dim;
+	}
+
+	out << flush;
 }
 
 #endif

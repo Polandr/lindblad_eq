@@ -80,7 +80,7 @@ void write_elems(ostream& out, double* buf, int count)
 		out << /*setprecision(2) << */
 		'(' << buf[2*i] << ',' << buf[2*i+1] << ')';
 		if (i != count-1)
-			out << ' ';
+			out << '\t';
 	}
 }
 
@@ -128,7 +128,7 @@ void Matrix::stream_output (ostream& out)
 			if (ofs % global_n_cols() == 0)
 				out << endl;
 			else
-				out << ' ';
+				out << '\t';
 
 			free(buf);
 		}
@@ -544,7 +544,7 @@ bool all_elements(int i, int j)
 }
 
 void Matrix::print_diagonal_abs(FILE* file)
-// Need serialization here
+// Need queue here
 {
 	int min_dim = (global_n_rows() < global_n_cols())? global_n_rows() : global_n_cols();
 	int* local_proc_info = gather_info();
@@ -564,11 +564,14 @@ void Matrix::print_diagonal_abs(FILE* file)
 				magnitude = abs(data[(i - info.row_offset()) + n_rows * (i - info.col_offset())]);
 			}
 
+			//if (i==16)
+			//{
+
 			fprintf(file, "%lf", magnitude);
 			if (i != min_dim-1)
 				fprintf(file, " ");
 			else
-				fprintf(file, "\n");
+				fprintf(file, "\n");// }
 		}
 		else
 			if (in_block(i,i))

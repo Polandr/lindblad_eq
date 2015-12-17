@@ -2,86 +2,62 @@
 #include "solver.h"
 
 using namespace std;
-complexd myH(int i, int j)
-{
-	if ((i==0)&&(j==1)) return 1;
-	if ((i==1)&&(j==0)) return 1;
-	if (i==j) return 1;
-	return 0;
-}
-
-complexd myR(int i, int j)
-{
-	return ((i == 0)&&(j==0)) ? 1 : 0;
-}
 
 int main(int argc, char** argv)
 {
 	ProcessorGrid::default_init();
 
-	Matrix H(8,8), R0(8,8);
-
-	//Lindblad_part lindblad;
-	std::vector<complexd> di;
-	complexd a(1.0,0);
-	//complexd a1(3.0,0);
-	di.push_back(a);
-	//di.push_back(a1);
-	//lindblad.init(0,di);
-
-	H.generate(test_H);
-	R0.generate(test_R);
+	//H.generate(test_H);
+	//R0.generate(test_R);
 
 	Solver solver;
 
-	solver.init_hamiltonian(H);
-	solver.init_density_matrix(R0);
+	int step = 10;
+	double st = 0.001;
 
-	solver.init_time_step(0.2);
-	solver.init_step_num(1);
+	//solver.init_hamiltonian(H);
+	/*vector<complexd> a(1), w(2);
+	a[0] = 1;
+	w[0] = 1; w[1] = 1;
+	solver.init_hamiltonian(2,1,0,1,a,w);*/
 
-	solver.init_lindblad(0,di);
-
-	solver.solve(NULL);
-
-
-	/*vector<complexd> eigenvalues;
-	Matrix base_H = H.diagonalize(eigenvalues);
-
-	cout << H;
-	if (ProcessorGrid::is_root())
-		cout << endl;
-
-	cout << base_H;
-	if (ProcessorGrid::is_root())
-		cout << endl;
-
-	if (ProcessorGrid::is_root())
+	vector<complexd> a(1), w(2);
+	for (int i=0; i<1; i++)
 	{
-		for (int i = 0; i < eigenvalues.size(); i++)
-			cout << eigenvalues[i] << endl;
-		cout << endl;
+		a[i] = 1;
 	}
 
-	Matrix exp_H = exp(H,1.0);
-	cout << exp_H;*/
+	for (int i=0; i<2; i++)
+	{
+		w[i] = 1;
+	}
 
-	// Hamiltonian constructing test---------------------------------------------------------------
+	solver.init_hamiltonian(2,1,0,1,a,w);
 
-	/*vector<complexd> a(2), w(3);
+	/*vector<double> q_probs(2), s_probs(2);
+	q_probs[0] = 1; q_probs[1] = 0;
+	s_probs[0] = 1; s_probs[1] = 0;// s_probs[2] = 0;
+	solver.init_density_matrix(q_probs,s_probs);*/
 
-	a[0] = 1;
-	a[1] = 2;
+	solver.init_density_matrix(1);
 
-	w[0] = 1;
-	w[1] = 2;
-	w[2] = 3;
+	//cout << solver.get_density_matrix();
 
-	solver.init_hamiltonian(3,0,0,3,a,w);
+	solver.init_time_step(st);
+	solver.init_step_num(step);
 
-	//solver.get_hamiltonian().writef(2,"matrices/hamiltonian");
+	std::vector<complexd> d;
+	for (int i=0; i<2; i++)
+		d.push_back(1);
+	solver.init_lindblad(1,d);
 
-	cout << solver.get_hamiltonian();*/
+	//cout << solver;
+	//solver.print_base_states(cout);
+
+	solver.solve(NULL);
+	
+	//cout<<step*st<<endl;
+
 
 	ProcessorGrid::exit();
 }

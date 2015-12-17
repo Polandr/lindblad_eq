@@ -42,9 +42,9 @@ public:
 	const Distribution& get_distribution () const { return info; }
 	const int* get_descriptor() const { return info.descriptor; }
 	const complexd get (int) const;
-	double* get_data () const;
+	void get_data (double* ) const;
 	void get_row (double*, int) const;
-	const complexd operator () (int, int) const;
+	const complexd operator () (int, int) const; // Read-only!
 
 	void set (int, int, complexd);
 	void set (int, complexd);
@@ -60,21 +60,25 @@ public:
 
 
 	void in_place_transposition();
+	// Local transposition
 	Matrix operator ~ () const;
+	// Gloabl transposition
 	Matrix conj () const;
+	// Each element conjugation
 	Matrix herm_conj () const;
+	// Hermitian conjugation (transposition + element conjugation)
 	Matrix& operator = (const Matrix&);
+
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
 
+	Matrix& operator += (const Matrix);
+	Matrix operator + (const Matrix) const;
 
-	Matrix& operator += (const Matrix&);
-	Matrix operator + (const Matrix&) const;
+	Matrix& operator -= (const Matrix);
+	Matrix operator - (const Matrix) const;
 
-	Matrix& operator -= (const Matrix&);
-	Matrix operator - (const Matrix&) const;
-
-	Matrix operator * (Matrix&) const;
+	Matrix operator * (Matrix) const;
 	Matrix diagonalize(std::vector<complexd>&) const;
 
 // I/O part
@@ -82,7 +86,7 @@ public:
 	int readf (const char*, int, int);
 	void writef (int, const char*);
 	void print_on_condition (std::ostream&, bool (*cond)(int, int));
-	void print_diagonal_abs(FILE*);
+	void print_diagonal_abs (FILE*);
 	void generate (complexd (*func)(int, int));
 
 	void operator >> (std::ostream&);
@@ -94,15 +98,11 @@ public:
 std::ostream& operator << (std::ostream&, Matrix&);
 std::istream& operator >> (std::istream&, Matrix&);
 
-Matrix exp (Matrix, double);
 Matrix operator * (const complexd, const Matrix&);
 
-Matrix exp (Matrix&, complexd);
-Matrix commutator (Matrix&, Matrix&);
+Matrix exp (Matrix& matrix, complexd coeff);
+Matrix commutator (Matrix& A, Matrix& B);
 Matrix diagonal_matrix(vector<complexd> values);
-
-Matrix density_matrix(std::vector<complexd>);
-Matrix density_matrix(int,int);
 
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"

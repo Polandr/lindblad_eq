@@ -35,6 +35,9 @@ struct ProcessorGrid
 	static int is_root () { return my_proc == root; }
 	static void barrier () { MPI_Barrier(MPI_COMM_WORLD); }
 
+	static void root_print (const char*);
+	static void endline ();
+
 	static void exit ();
 };
 
