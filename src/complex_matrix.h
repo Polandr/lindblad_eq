@@ -31,6 +31,7 @@ class Matrix
 	int* gather_info ();
 
 public:
+	int stop;
 	int n_rows, n_cols;
 	
 	bool is_square() const { return (global_n_rows() == global_n_cols()); }

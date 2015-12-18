@@ -564,14 +564,18 @@ void Matrix::print_diagonal_abs(FILE* file)
 				magnitude = abs(data[(i - info.row_offset()) + n_rows * (i - info.col_offset())]);
 			}
 
-			//if (i==16)
-			//{
-
-			fprintf(file, "%lf", magnitude);
-			if (i != min_dim-1)
-				fprintf(file, " ");
-			else
-				fprintf(file, "\n");// }
+			if (i==7)
+			{
+				
+				/*fprintf(file, "%lf", magnitude);
+				if (i != min_dim-1)
+					fprintf(file, " ");
+				else
+					fprintf(file, "\n");*/
+				stop = 0;
+				if (magnitude >= 0.95)
+					stop = 1;
+			}
 		}
 		else
 			if (in_block(i,i))

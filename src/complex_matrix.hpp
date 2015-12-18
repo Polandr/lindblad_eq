@@ -309,6 +309,7 @@ Matrix Matrix::operator - (const Matrix A) const
 
 Matrix Matrix::operator * (Matrix b) const
 {
+
 	if (global_n_cols() != b.global_n_rows())
 		throw Matrix_exception("incomatible sizes of matrices in multiplication");
 

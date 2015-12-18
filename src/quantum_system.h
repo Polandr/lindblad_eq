@@ -320,7 +320,7 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max,
 
 Matrix density_matrix(vector<complexd> state)
 {
-	Matrix out(state.size(),state.size());
+	Matrix out(state.size(),state.size()); 
 	for (int i = 0; i < out.global_n_rows(); i++)
 		for (int j = 0; j < out.global_n_cols(); j++)
 			out.set(i,j,state[i]*std::conj(state[j]));

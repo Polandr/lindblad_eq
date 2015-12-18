@@ -183,13 +183,14 @@ void Solver::init_system ()
 void Solver::solve (const char* filename)
 {
 	FILE* file;
+	R.stop = 0;
 	if (filename != NULL)
 	{
 		file = fopen(filename,"w");
-		print_header(file);
+		//print_header(file);
 	}
-	else
-		print_header(stdout);
+	//else
+		//print_header(stdout);
 
 	complexd imag_unit(0,1);
 	Matrix U = exp(H,(-imag_unit)*dT/Plank_const);
@@ -206,7 +207,12 @@ void Solver::solve (const char* filename)
 		if (filename != NULL)
 			R.print_diagonal_abs(file);
 		else
-			R.print_diagonal_abs(stdout);
+			R.print_diagonal_abs(stdout); 
+		if (R.stop == 1)
+		{
+			cout<<dT*i<<endl;
+			break;
+		}
 
 	}
 	if (filename != NULL)
