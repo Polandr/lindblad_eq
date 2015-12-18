@@ -265,7 +265,7 @@ void addDephaseMatrix(vector<complexd>& L, int pos, vector<int> base_states)
 	for (int i = 0; i < base_states.size(); ++i)
 	{
 		if ((mask & base_states[i]) == mask)
-			L.push_back(1.0);
+			L.push_back(1);
 		else
 			L.push_back(0);
 	}
