@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 	double op = 0.05;
 	double now = 0.0;
 	double stockStep = 0.2;
-	double stockKoeff = 2.2;
+	double stockKoeff = 0.5;
 	int steps = 2/op + 1;
 
 /********************************get time*******************************************************/
