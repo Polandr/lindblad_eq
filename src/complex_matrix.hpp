@@ -213,7 +213,6 @@ const complexd Matrix::operator () (int row, int col) const
 	else
 	{
 		double value[2];
-		//printf("<%d>: I'm here\n", ProcessorGrid::my_proc);
 		if (in_block(row,col))
 		{
 			value[0] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].real();
