@@ -28,7 +28,7 @@ Initial density matrix:
 Stop conditions:
 	- Stock amplitude is more than 0.99
 	or
-	- Evolution time is more than 100
+	- Evolution time is more than 1000
 
 */
 
