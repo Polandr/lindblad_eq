@@ -1,6 +1,8 @@
 #ifndef __PROCESSORS_H__
 #define __PROCESSORS_H__
 
+#include <mpi/mpi.h>
+
 #define ROOT 0
 #define STRT_R 0
 #define STRT_C 0

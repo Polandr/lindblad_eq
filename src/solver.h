@@ -2,14 +2,12 @@
 #define __SOLVER_H__
 
 #include <iostream>
-#include <cstdio>
-#include <utility>
-#include <fstream>
 #include <vector>
 
 #include "complex_matrix.h"
 #include "quantum_system.h"
 
+const double Plank_const = 1.0;
 
 class Solver
 {
@@ -20,9 +18,10 @@ class Solver
 	std::vector<int> state_nums;
 	int N;
 	
-	Lindblad_part L;
 	double dT;
 	int step_n;
+
+	Lindblad_part L;
 
 public:
 
@@ -30,8 +29,7 @@ public:
 	Matrix& get_density_matrix () { return R; }
 	double& get_time_step () { return dT; }
 	int& get_step_num () { return step_n; }
-
-	void init_dimension(int dim) { N = dim; }
+	int& get_dimension() { return N; }
 
 	void init_hamiltonian (const char* filename);
 	void init_hamiltonian (const Matrix& matrix_H);
@@ -58,16 +56,23 @@ public:
 	// then all states are set as equiprobable
 	// Requires base_states initialization
 
+	void init_base_states ();
 	void init_time_step (double time);
 	void init_step_num (int steps);
 	void init_lindblad (complexd stock, std::vector<complexd> l);
 
 	void init_system ();
-	// Unsafe!
 	// Some default initialization
+	void clear_system ();
 
+// Main functions
 	void solve (const char* filename);
+	// Solver provides evolution for <step_n> steps
+	double solve_to_max_stock ();
+	// Solver provides evolution till all energy flow down to stock
+	// Returns time of evolution
 
+// I/O
 	void print_base_states(std::ostream&);
 	void operator >> (std::ostream&);
 	void operator << (std::istream&);

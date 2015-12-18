@@ -1,8 +1,12 @@
 // Matrix input and output operations realization
 
+#include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <mpi/mpi.h>
 
 using namespace std;
 
@@ -99,6 +103,9 @@ void Matrix::stream_output (ostream& out)
 {
 	int* local_proc_info = gather_info();
 
+	if (global_n_rows() == 0 || global_n_cols() == 0)
+		ProcessorGrid::root_print("<Empty matrix>\n");
+
 	if (ProcessorGrid::is_root())
 	// Root
 	{
@@ -151,6 +158,9 @@ void Matrix::stream_output (ostream& out)
 void Matrix::stream_input (istream& in)
 {
 	int* local_proc_info = gather_info();
+
+	if (global_n_rows() == 0 || global_n_cols() == 0)
+		return;
 
 	if (ProcessorGrid::is_root())
 	// Root

@@ -1,18 +1,10 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
-#include <cstring>
-#include <cstdlib>
-#include <cstdio>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <iostream>
-#include <fstream>
 #include <complex>
 #include <vector>
-#include <utility>
 
-#include <mpi/mpi.h>
 #include "scalapack.h"
 #include "processors.h"
 

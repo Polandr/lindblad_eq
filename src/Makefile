@@ -9,7 +9,10 @@ my_test: test.cpp $(HDRS)
 matrix_test: matrix_test.cpp $(HDRS)
 	$(CXX) matrix_test.cpp -o matrix_test -lscalapack -llapack -lblas -lgfortran
 
+experiment: experiment.cpp $(HDRS)
+	$(CXX) experiment.cpp -o experiment -lscalapack -llapack -lblas -lgfortran
+
 clean:
-	rm -f my_test matrix_test
+	rm -f my_test matrix_test experiment
 
 .PHONY: first clean

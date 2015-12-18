@@ -11,6 +11,8 @@
 #define EPS 0.000001
 #endif
 
+#include "exceptions.hpp"
+
 using namespace std;
 
 // Hamiltonian:
@@ -25,9 +27,19 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vect
 
 // Density matrix:
 
-Matrix density_matrix(vector<complexd> state);
-Matrix density_matrix(int N, int i);
-Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums);
+Matrix density_matrix (vector<complexd> state);
+// Make density matrix for quantum state
+Matrix density_matrix (int N, int i);
+// Make density matrix with single 1 on main diagonal on position number <pos> and other elemants set as 0
+Matrix density_matrix (vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums);
+// Make density matrix with probabilities of {qbit = 1} event as <qbit_probs> and {stock = i} event as <stock_probs>
+// If <qbit_probs> designate set of possible states (at least 1): states which were set during hamiltonian construction
+// then set of possible states are chosen with certain ratio
+// If <qbit_probs> designate set of impossible states
+// then all states are set as equiprobable
+
+double summarize_amplitudes_in_stock_block (Matrix& density, int block_num, vector<int> base_states, vector<int> state_nums);
+// Summarize amplitudes of block corresponded to <block_num> stock state in density matrix <density>
 
 // Lindblad:
 
@@ -47,11 +59,13 @@ public:
 
 	Lindblad_part () { active = false; }
 	void init (complexd, vector<complexd>, vector<int> base_states, vector<int> state_nums);
+	void destroy ();
 
 	Matrix operator () (Matrix&);
 
 	void print_matrices (ostream&);
 };
+
 
 // Implementation:-------------------------------------------------------------------------------------------------------
 
@@ -318,7 +332,7 @@ Matrix hamiltonian (int N, int s, int E_min, int E_max,
 
 // Density matrix constructing:------------------------------------------------------------------------------------------
 
-Matrix density_matrix(vector<complexd> state)
+Matrix density_matrix (vector<complexd> state)
 {
 	Matrix out(state.size(),state.size());
 	for (int i = 0; i < out.global_n_rows(); i++)
@@ -327,16 +341,14 @@ Matrix density_matrix(vector<complexd> state)
 	return out;
 }
 
-Matrix density_matrix(int N, int i)
+Matrix density_matrix (int N, int i)
 {
-	if (i >= N)
-		throw  Matrix_exception("invalid density matrix initialization");
 	vector<complexd> state(N,0);
 	state[i] = 1;
 	return density_matrix(state);
 }
 
-Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums)
+Matrix density_matrix (vector<double> qbit_probs, vector<double> stock_probs, vector<int> base_states, vector<int> state_nums)
 {
 	vector<complexd> diagonal(base_states.size(),0);
 
@@ -364,11 +376,30 @@ Matrix density_matrix(vector<double> qbit_probs, vector<double> stock_probs, vec
 	return diagonal_matrix(diagonal);
 }
 
+double summarize_amplitudes_in_stock_block (Matrix& density, int block_num, vector<int> base_states, vector<int> state_nums)
+{
+	if (block_num >= state_nums.size())
+		throw  Solver_exception("invalid number of block to summarize in density matrix");
+
+	int ofs = 0;
+	for (int i = 0; i < block_num; ++i)
+		ofs += state_nums[i];
+
+	double sum = 0;
+	for (int i = ofs; i < ofs+state_nums[block_num]; ++i)
+		sum += abs(density(i,i));
+
+	return sum;
+}
 
 // Lindblad part:--------------------------------------------------------------------------------------------------------
 
 void Lindblad_part::init (complexd out, vector<complexd> ls, vector<int> base_states, vector<int> state_nums)
 {
+	if (active)
+		destroy();
+
+	active = true;
 	stock = out;
 
 	for (int i = 0; i < ls.size(); ++i)
@@ -378,6 +409,17 @@ void Lindblad_part::init (complexd out, vector<complexd> ls, vector<int> base_st
 
 	for (int i = 0; i < L_num(); ++i)
 		addDephaseMatrix(L,i,base_states);
+}
+
+void Lindblad_part::destroy ()
+{
+	active = false;
+	l.clear();
+	l.resize(0);
+	L.clear();
+	L.resize(0);
+	//L0.~Matrix();
+	L0.init();
 }
 
 Matrix Lindblad_part::operator () (Matrix& R)

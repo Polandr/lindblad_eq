@@ -1,37 +1,10 @@
 // ProcessorGrid and Distribution structures realization
 
+#include <iostream>
+
 using namespace std;
 
-class Processors_exception: public std::exception
-{
-	mutable char* errstr; 
-
-	public:
-
-	Processors_exception(const char* str = "")
-	{
-		errstr = const_cast <char*> (str);
-	}
-	~Processors_exception() throw()
-	{
-		delete [] errstr;
-	}
-	virtual const char* what() const throw()
-	{
-		char* tmp = errstr;
-		char* prefix = const_cast <char*> ("Error in processor grid: ");
-		try
-		{
-			errstr = new char [strlen(prefix)+strlen(errstr)+2];
-		}
-		catch (std::exception& smth)
-		{
-			return "Couldn't generate an error message (there is no memory)\n";
-		}
-		sprintf(errstr, "%s%s.\n", prefix, tmp);
-		return errstr;
-	}	
-};
+#include "exceptions.hpp"
 
 // Parallel distribution-------------------------------------------------------------
 

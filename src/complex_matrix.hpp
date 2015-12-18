@@ -1,40 +1,13 @@
 // Matrix class realization
 
+#include <cstdlib>
+
 using namespace std;
 
-const double Plank_const = 1.0;
 #define ONE_VAL_TAG 512
 
-class Matrix_exception: public std::exception
-{
-	mutable char* errstr; 
+#include "exceptions.hpp"
 
-	public:
-
-	Matrix_exception(const char* str = "")
-	{
-		errstr = const_cast <char*> (str);
-	}
-	~Matrix_exception() throw()
-	{
-		delete [] errstr;
-	}
-	virtual const char* what() const throw()
-	{
-		char* tmp = errstr;
-		char* prefix = const_cast <char*> ("Complex matrix error: ");
-		try
-		{
-			errstr = new char [strlen(prefix)+strlen(errstr)+2];
-		}
-		catch (std::exception& smth)
-		{
-			return "Couldn't generate an error message (there is no memory)\n";
-		}
-		sprintf(errstr, "%s%s.\n", prefix, tmp);
-		return errstr;
-	}	
-};
 
 // Matrix grid initialization
 
@@ -158,7 +131,7 @@ Matrix::Matrix (int rows, int cols,
 		data[i] = 0;
 }
 
-void Matrix::init (int rows, int cols,
+void Matrix::init (int rows = 0, int cols = 0,
 	int row_block = R_BLOCK_SIZE, int col_block = C_BLOCK_SIZE)
 {
 	this->~Matrix();
@@ -185,6 +158,8 @@ Matrix::~Matrix ()
 {
 	if (n_rows != 0 && n_cols != 0)
 		destroy();
+	n_rows = 0;
+	n_cols = 0;
 }
 
 // Some necessary stuff-----------------------------------------------------------------
@@ -231,17 +206,20 @@ void Matrix::in_place_transposition ()
 
 const complexd Matrix::operator () (int row, int col) const
 // Global read-only access to the element
+// All compute cores should execute this function!
 {
 	if (row >= global_n_rows() || row < 0 || col >= global_n_cols() || col < 0) 
 		throw Matrix_exception("out of bounds");
 	else
 	{
 		double value[2];
+		//printf("<%d>: I'm here\n", ProcessorGrid::my_proc);
 		if (in_block(row,col))
 		{
 			value[0] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].real();
 			value[1] = data[(row - info.row_offset()) + n_rows * (col - info.col_offset())].imag();
-			MPI_Send(value,2,MPI_DOUBLE,ProcessorGrid::root,ONE_VAL_TAG,MPI_COMM_WORLD);
+			MPI_Request request;
+			MPI_Isend(value,2,MPI_DOUBLE,ProcessorGrid::root,ONE_VAL_TAG,MPI_COMM_WORLD,&request);
 		}
 		if (ProcessorGrid::is_root())
 		{
