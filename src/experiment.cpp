@@ -109,14 +109,21 @@ int main(int argc, char** argv)
 			//solver.solve(NULL);
 
 			if (ProcessorGrid::is_root())
+			{
 				cout << "Evolution time is " << E_time << endl;
+				fprintf(res_file, "%.2f ", E_time);
+			}
 			ProcessorGrid::endline();
-			fprintf(res_file, "%.2f ", E_time);
-
 		}
-		fprintf(res_file, "\n");
-		fflush(res_file);
+		if (ProcessorGrid::is_root())
+		{
+			fprintf(res_file, "\n");
+			fflush(res_file);
+		}
 	}
+
+	if (ProcessorGrid::is_root())
+		fclose(res_file);
 
 	ProcessorGrid::exit();
 }
