@@ -251,6 +251,20 @@ Matrix operator * (const complexd val, const Matrix& mat)
 	return  mat*val;
 }
 
+Matrix& Matrix::operator /= (const complexd val)
+{
+	for (int i = 0; i < n_rows*n_cols; i++)
+		data[i] /= val;
+	return *this;
+}
+
+Matrix Matrix::operator / (const complexd val) const
+{
+	Matrix out(*this);
+	out /= val;
+	return out;
+}
+
 Matrix& Matrix::operator += (const Matrix A)
 {
 	if (global_n_rows() != A.global_n_rows() || global_n_cols() != A.global_n_cols())
@@ -478,10 +492,19 @@ Matrix commutator (Matrix& A, Matrix& B)
 	return A*B-B*A;
 }
 
-Matrix diagonal_matrix(vector<complexd> values)
+Matrix diagonal_matrix (vector<complexd> values)
 {
 	Matrix out(values.size(),values.size());
 	for (int i = 0; i < values.size(); i++)
 		out.set(i,i,values[i]);
+	return out;
+}
+
+complexd trace (Matrix& A)
+{
+	int min_dim = (A.global_n_rows() < A.global_n_cols())? A.global_n_rows() : A.global_n_cols();
+	complexd out = 0;
+	for (int i = 0; i < min_dim; ++i)
+		out += A(i,i);
 	return out;
 }

@@ -64,6 +64,9 @@ public:
 	Matrix& operator *= (complexd);
 	Matrix operator * (complexd) const;
 
+	Matrix& operator /= (complexd);
+	Matrix operator / (complexd) const;
+
 	Matrix& operator += (const Matrix);
 	Matrix operator + (const Matrix) const;
 
@@ -71,7 +74,7 @@ public:
 	Matrix operator - (const Matrix) const;
 
 	Matrix operator * (Matrix) const;
-	Matrix diagonalize(std::vector<complexd>&) const;
+	Matrix diagonalize (std::vector<complexd>&) const;
 
 // I/O part
 
@@ -94,7 +97,8 @@ Matrix operator * (const complexd, const Matrix&);
 
 Matrix exp (Matrix& matrix, complexd coeff);
 Matrix commutator (Matrix& A, Matrix& B);
-Matrix diagonal_matrix(vector<complexd> values);
+Matrix diagonal_matrix (vector<complexd> values);
+complexd trace (Matrix& A);
 
 #include "complex_matrix.hpp"
 #include "complex_matrix_io.hpp"

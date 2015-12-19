@@ -40,46 +40,83 @@ int main(int argc, char** argv)
 {
 	ProcessorGrid::default_init();
 
-	/*vector<double> q_probs(2), s_probs(2);
-	q_probs[0] = 1; q_probs[1] = 0;
-	s_probs[0] = 1; s_probs[1] = 0;
-	solver.init_density_matrix(q_probs,s_probs);*/
+	int N_min = 2, N_max = 12, N_step = 1;
+	double Stock_min = 0.05, Stock_max = 12.0, Stock_step = 0.05;
 
-	int N_min = 7, N_max = 7, N_step = 1;
-	double Stock_min = 1.0, Stock_max = 1.0, Stock_step = 0.02;
+	FILE* res_file;
+	if (ProcessorGrid::is_root())
+	{
+		if (argc != 2)
+		{
+			cerr << "Usage: " << argv[0] << " <file for results>\n";
+			return -1;
+		}
+		res_file = fopen(argv[1] ,"a");
 
+		// <Header>
+		fprintf(res_file, "\nVertical axis (Number of atoms):\n");
+		for (int N = N_min; N <= N_max; N+=N_step)
+		{
+			fprintf(res_file, "%d", N);
+			if (N < N_max)
+				fprintf(res_file, " ");
+		}
+		fprintf(res_file, "\nHorizontal axis (Stock coefficient):\n");
+		for (double Stock = Stock_min; Stock <= Stock_max; Stock+=Stock_step)
+		{
+			fprintf(res_file, "%.2f", Stock);
+			if (Stock < Stock_max)
+				fprintf(res_file, " ");
+		}
+		fprintf(res_file, "\n\nEvolution time:\n");
+		// </Header>
+	}
 
 	for (int N = N_min; N <= N_max; N+=N_step)
-		for (double Stock = Stock_min; Stock <= Stock_max; Stock+=Stock_step)
 	{
-		Solver solver;
+		for (double Stock = Stock_min; Stock <= Stock_max; Stock+=Stock_step)
+		{
+			Solver solver;
 
-		vector<complexd> a, w, d;
-		for (int i = 0; i < N-1; i++)
-			a.push_back(1);
-		for (int i = 0; i < N; i++)
-			w.push_back(1);
-		for (int i = 0; i < N; i++)
-			d.push_back(0);
+			vector<complexd> a, w, d;
+			for (int i = 0; i < N-1; i++)
+				a.push_back(1);
+			for (int i = 0; i < N; i++)
+				w.push_back(1);
+			for (int i = 0; i < N; i++)
+				d.push_back(0);
 
-		solver.init_hamiltonian(N,2,2,2,a,w);
-		solver.init_density_matrix(0);
-		solver.init_time_step(0.05);
-		solver.init_step_num(1000.0/0.05);
-		solver.init_lindblad(Stock,d);
+			solver.init_hamiltonian(N,2,2,2,a,w);
 
-		//cout << solver;
-		ProcessorGrid::endline();
+			solver.init_density_matrix(0);
+			/*int C_N_2 = combination_num(2,N);
+			vector<complexd> state(C_N_2 + N + 1);
+			for (int i = 0; i < C_N_2; ++i)
+				state[i] = 1.0/sqrt(C_N_2);
+			solver.init_density_matrix(state);*/
 
-		double E_time = 0;
-		E_time = solver.solve_to_max_stock();
-		//solver.solve(NULL);
+			solver.init_time_step(0.05);
 
-		if (ProcessorGrid::is_root())
-			cout << "Evolution time is " << E_time << endl;
+			solver.init_step_num(1000.0/0.05);
 
-		ProcessorGrid::endline();
+			solver.init_lindblad(Stock,d);
 
+			//cout << solver;
+			//ProcessorGrid::endline();
+
+			double E_time = 0;
+			E_time = solver.solve_to_max_stock();
+			//solver.solve(NULL);
+
+			if (ProcessorGrid::is_root())
+				cout << "Evolution time is " << E_time << endl;
+			ProcessorGrid::endline();
+			fprintf(res_file, "%.2f ", E_time);
+
+		}
+		fprintf(res_file, "\n");
+		fflush(res_file);
 	}
+
 	ProcessorGrid::exit();
 }

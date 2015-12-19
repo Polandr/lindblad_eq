@@ -15,6 +15,10 @@
 
 using namespace std;
 
+// Normalization of hermitian matrix:
+
+void herm_normalization (Matrix& H);
+
 // Hamiltonian:
 
 Matrix hamiltonian (int N, int s, int E_min, int E_max, vector<complexd> a, vector<complexd> w, vector<int>& base_states);
@@ -283,6 +287,13 @@ void addDephaseMatrix(vector<complexd>& L, int pos, vector<int> base_states)
 		else
 			L.push_back(0);
 	}
+}
+
+// Normalization of hermitian matrix:------------------------------------------------------------------------------------
+
+void herm_normalization (Matrix& H)
+{
+	H = (H + H.herm_conj()) * 0.5 / trace(H);
 }
 
 // Hamiltonian constructing:---------------------------------------------------------------------------------------------
