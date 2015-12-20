@@ -21,9 +21,10 @@ Other parameters:
 
 	- Dephase coefficients are 0
 
-	- Time step is 0.05
+	- Time step is 0.05 (2 - 8 atoms) / 0.1 (9 - 12 atoms)
 
 Initial density matrix:
+First state's amplitude is 1, other's is 0
 
 Stop conditions:
 	- Stock amplitude is more than 0.99
@@ -40,7 +41,7 @@ int main(int argc, char** argv)
 {
 	ProcessorGrid::default_init();
 
-	int N_min = 2, N_max = 12, N_step = 1;
+	int N_min = 11, N_max = 12, N_step = 1;
 	double Stock_min = 0.05, Stock_max = 12.0, Stock_step = 0.05;
 
 	FILE* res_file;
@@ -54,7 +55,7 @@ int main(int argc, char** argv)
 		res_file = fopen(argv[1] ,"a");
 
 		// <Header>
-		fprintf(res_file, "\nVertical axis (Number of atoms):\n");
+		/*fprintf(res_file, "\nVertical axis (Number of atoms):\n");
 		for (int N = N_min; N <= N_max; N+=N_step)
 		{
 			fprintf(res_file, "%d", N);
@@ -68,7 +69,7 @@ int main(int argc, char** argv)
 			if (Stock < Stock_max)
 				fprintf(res_file, " ");
 		}
-		fprintf(res_file, "\n\nEvolution time:\n");
+		fprintf(res_file, "\n\nEvolution time:\n");*/
 		// </Header>
 	}
 
@@ -95,9 +96,9 @@ int main(int argc, char** argv)
 				state[i] = 1.0/sqrt(C_N_2);
 			solver.init_density_matrix(state);*/
 
-			solver.init_time_step(0.05);
+			solver.init_time_step(0.1);
 
-			solver.init_step_num(1000.0/0.05);
+			solver.init_step_num(1000.0/0.1);
 
 			solver.init_lindblad(Stock,d);
 
@@ -123,7 +124,10 @@ int main(int argc, char** argv)
 	}
 
 	if (ProcessorGrid::is_root())
+	{
+		fprintf(res_file, "\nExperiment finished\n");
 		fclose(res_file);
+	}
 
 	ProcessorGrid::exit();
 }
